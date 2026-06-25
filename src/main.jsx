@@ -67,6 +67,51 @@ function GradeSelect({ onConfirm }) {
   );
 }
 
+function SubjectSelect({ grade, onConfirm }) {
+  const [subject, setSubject] = useState('');
+  const [topic, setTopic] = useState('');
+  const subjects = ['Math', 'English', 'Science', 'Social Studies', 'History', 'Geography', 'Art', 'Music', 'Physical Education', 'Other'];
+  return (
+    <main className="screen landing">
+      <section className="hero-card">
+        <img src="/logo.png" alt="Pupil logo" className="hero-logo" />
+        <div className="logo-name">Pupil-AI</div>
+        <h1 style={{ fontSize: 'clamp(28px, 4vw, 48px)', marginBottom: 8 }}>What are you studying?</h1>
+        <p className="lede" style={{ marginBottom: 28 }}>Grade {grade} · Tell Pupil what you want to teach.</p>
+        <div className="subject-row">
+          <select
+            className="grade-select"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+          >
+            <option value="" disabled>Subject</option>
+            {subjects.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <input
+            className="topic-input"
+            type="text"
+            placeholder="Topic (e.g. photosynthesis)"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && subject && topic.trim() && onConfirm(subject, topic.trim())}
+          />
+        </div>
+        <div style={{ marginTop: 18 }}>
+          <button
+            className="primary"
+            disabled={!subject || !topic.trim()}
+            onClick={() => onConfirm(subject, topic.trim())}
+          >
+            Start chatting →
+          </button>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 function Chat({ onFinish }) {
   const [messages, setMessages] = useState(starterMessages);
   const [input, setInput] = useState('');
@@ -187,8 +232,11 @@ function TeacherReport({ onBack }) {
 function App() {
   const [screen, setScreen] = useState('landing');
   const [grade, setGrade] = useState(null);
-  if (screen === 'grade') return <GradeSelect onConfirm={(g) => { setGrade(g); setScreen('chat'); }} />;
-  if (screen === 'chat') return <Chat grade={grade} onFinish={() => setScreen('end')} />;
+  const [subject, setSubject] = useState(null);
+  const [topic, setTopic] = useState(null);
+  if (screen === 'grade') return <GradeSelect onConfirm={(g) => { setGrade(g); setScreen('subject'); }} />;
+  if (screen === 'subject') return <SubjectSelect grade={grade} onConfirm={(s, t) => { setSubject(s); setTopic(t); setScreen('chat'); }} />;
+  if (screen === 'chat') return <Chat grade={grade} subject={subject} topic={topic} onFinish={() => setScreen('end')} />;
   if (screen === 'end') return <EndScreen onTeacher={() => setScreen('report')} onRestart={() => setScreen('landing')} />;
   if (screen === 'report') return <TeacherReport onBack={() => setScreen('landing')} />;
   return <Landing onStart={() => setScreen('grade')} onTeacher={() => setScreen('report')} />;

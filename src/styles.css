@@ -40,6 +40,22 @@ h1 { font-size: clamp(42px, 7vw, 82px); line-height: 0.92; letter-spacing: -0.07
 }
 .button-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
 .grade-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; align-items: center; }
+.subject-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; align-items: center; }
+.topic-input {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 13px 22px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--navy);
+  background: white;
+  outline: none;
+  min-width: 220px;
+  flex: 1;
+  max-width: 320px;
+}
+.topic-input::placeholder { color: var(--muted); }
+.topic-input:focus { border-color: var(--navy); }
 .grade-select {
   appearance: none;
   border: 1px solid var(--line);

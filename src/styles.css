@@ -39,6 +39,21 @@ h1 { font-size: clamp(42px, 7vw, 82px); line-height: 0.92; letter-spacing: -0.07
   padding: 8px 13px; color: var(--navy-2); background: white;
 }
 .button-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.grade-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; align-items: center; }
+.grade-select {
+  appearance: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 13px 44px 13px 20px;
+  font-weight: 600;
+  font-size: 16px;
+  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23101f36' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 18px center;
+  color: var(--navy);
+  cursor: pointer;
+  outline: none;
+}
+.grade-select:focus { border-color: var(--navy); }
+.primary:disabled { opacity: 0.38; cursor: not-allowed; }
 .primary, .secondary, .ghost {
   border: 0; border-radius: 999px; padding: 13px 20px; font-weight: 700;
 }

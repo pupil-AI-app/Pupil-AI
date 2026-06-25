@@ -38,6 +38,35 @@ function Landing({ onStart, onTeacher }) {
   );
 }
 
+function GradeSelect({ onConfirm }) {
+  const [grade, setGrade] = useState('');
+  return (
+    <main className="screen landing">
+      <section className="hero-card small">
+        <img src="/logo.png" alt="Pupil logo" className="hero-logo" />
+        <div className="logo-name">Pupil-AI</div>
+        <h1 style={{ fontSize: 'clamp(28px, 4vw, 48px)', marginBottom: 8 }}>What grade are you in?</h1>
+        <p className="lede" style={{ marginBottom: 24 }}>Pupil will tailor the conversation to your level.</p>
+        <div className="grade-row">
+          <select
+            className="grade-select"
+            value={grade}
+            onChange={(e) => setGrade(e.target.value)}
+          >
+            <option value="" disabled>Select your grade</option>
+            {[3,4,5,6,7,8,9,10,11,12].map(g => (
+              <option key={g} value={g}>Grade {g}</option>
+            ))}
+          </select>
+          <button className="primary" disabled={!grade} onClick={() => onConfirm(grade)}>
+            Let's go →
+          </button>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 function Chat({ onFinish }) {
   const [messages, setMessages] = useState(starterMessages);
   const [input, setInput] = useState('');
@@ -157,10 +186,12 @@ function TeacherReport({ onBack }) {
 
 function App() {
   const [screen, setScreen] = useState('landing');
-  if (screen === 'chat') return <Chat onFinish={() => setScreen('end')} />;
+  const [grade, setGrade] = useState(null);
+  if (screen === 'grade') return <GradeSelect onConfirm={(g) => { setGrade(g); setScreen('chat'); }} />;
+  if (screen === 'chat') return <Chat grade={grade} onFinish={() => setScreen('end')} />;
   if (screen === 'end') return <EndScreen onTeacher={() => setScreen('report')} onRestart={() => setScreen('landing')} />;
   if (screen === 'report') return <TeacherReport onBack={() => setScreen('landing')} />;
-  return <Landing onStart={() => setScreen('chat')} onTeacher={() => setScreen('report')} />;
+  return <Landing onStart={() => setScreen('grade')} onTeacher={() => setScreen('report')} />;
 }
 
 createRoot(document.getElementById('root')).render(<App />);

@@ -46,6 +46,7 @@ h1 { font-size: clamp(42px, 7vw, 82px); line-height: 0.92; letter-spacing: -0.07
 .secondary { background: white; color: var(--navy); border: 1px solid var(--line); }
 .ghost { background: rgba(255,255,255,.72); color: var(--navy); border: 1px solid var(--line); }
 
+.hero-logo { width: 110px; height: 110px; object-fit: contain; margin: 0 auto 4px; display: block; }
 .pupil-mark { position: relative; width: 82px; height: 82px; margin: 0 auto; }
 .eye { width: 66px; height: 66px; border: 4px solid var(--navy); border-radius: 50%; display: grid; place-items: center; background: var(--chalk); transform: rotate(-4deg); margin: 12px auto 0; }
 .spiral { font-size: 25px; transform: rotate(18deg); }

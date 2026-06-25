@@ -26,6 +26,7 @@ function Landing({ onStart, onTeacher }) {
       <section className="hero-card">
         <div className="badge"><Sparkles size={16} /> Pilot Prototype</div>
         <img src="/logo.png" alt="Pupil logo" className="hero-logo" />
+        <div className="logo-name">Pupil-AI</div>
         <h1>Every student a teacher.</h1>
         <p className="lede">Pupil learns by asking students to explain what they know.</p>
         <div className="button-row">

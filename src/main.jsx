@@ -112,19 +112,11 @@ function SubjectSelect({ grade, onConfirm }) {
   );
 }
 
-const initialConversationState = {
-  topic: '',
-  current_understanding: '',
-  biggest_gap: '',
-  student_uncertain: false,
-  conversation_complete: false,
-};
-
 function Chat({ onFinish }) {
   const [messages, setMessages] = useState(starterMessages);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [conversationState, setConversationState] = useState(initialConversationState);
+  const [plan, setPlan] = useState(null);
 
   async function sendMessage() {
     const text = input.trim();
@@ -140,13 +132,13 @@ function Chat({ onFinish }) {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history: messages, conversationState }),
+        body: JSON.stringify({ message: text, history: messages }),
       });
       const data = await res.json();
       const reply = data.reply && data.reply.trim()
         ? data.reply.trim()
         : "I'm having trouble hearing that. Can you try again?";
-      if (data.conversationState) setConversationState(data.conversationState);
+      if (data.plan) setPlan(data.plan);
       setMessages([...next, { role: 'pupil', text: reply }]);
     } catch {
       setMessages([...next, { role: 'pupil', text: "I'm having trouble hearing that. Can you try again?" }]);

@@ -1,0 +1,142 @@
+Create a pilot-level conversation engine for Pupil.
+
+Goal:
+Separate conversation planning from Pupil’s visible response. The engine should decide what kind of conversational move should happen next, then the Pupil voice should express that move briefly.
+
+Do not build a production system. Keep this simple and functional.
+
+Files to create or update:
+
+1. Create:
+   `api/conversationEngine.js`
+
+2. Update:
+   `api/chat.js`
+
+3. Use the existing:
+   `api/modelService.js`
+
+Architecture:
+
+Student message + history
+→ conversationEngine analyzes the conversation
+→ conversationEngine returns a planning object
+→ modelService generates Pupil’s visible response using that planning object
+→ chat.js returns `{ reply: "..." }`
+
+Create `api/conversationEngine.js` with a function:
+
+`analyzeConversation({ message, history })`
+
+It should return a JSON object with this structure:
+
+{
+"conversation_complete": false,
+"next_move": "ASK_CAUSE",
+"topic": "",
+"current_understanding": "",
+"weakest_gap": "",
+"reason_for_move": "",
+"student_uncertain": false,
+"should_end": false
+}
+
+Allowed `next_move` values:
+
+* ASK_TOPIC
+* ASK_EXAMPLE
+* ASK_CAUSE
+* ASK_MECHANISM
+* ASK_RELATIONSHIP
+* ASK_CONSEQUENCE
+* ASK_MEANING
+* ASK_CLARIFICATION
+* RESPOND_TO_UNCERTAINTY
+* MAKE_CONNECTION
+* SUMMARIZE_AND_END
+
+Conversation engine rules:
+
+1. Pupil is trying to understand the phenomenon, not the student’s personal opinion.
+
+2. Understanding means Pupil can explain:
+
+   * what the topic is
+   * what the main idea/process/relationship is
+   * at least one concrete example, step, event, feature, or piece of evidence
+   * how the example connects to the main idea
+   * why it matters, what it causes, what it shows, or what happens because of it
+
+3. If the student says “I don’t know,” “idk,” “not sure,” or similar:
+
+   * set `student_uncertain` to true
+   * use `next_move: "RESPOND_TO_UNCERTAINTY"`
+   * do not ask the student to guess or speculate
+
+4. If the student has provided enough information for a coherent explanation:
+
+   * set `conversation_complete` to true
+   * set `should_end` to true
+   * use `next_move: "SUMMARIZE_AND_END"`
+
+5. If the student says something surprising, dramatic, symbolic, confusing, or important:
+
+   * do not immediately summarize
+   * choose the move that asks about the causal, symbolic, or meaningful gap
+
+6. Do not verify isolated factual accuracy.
+
+   * Do not ask “Are you sure?”
+   * Do not ask “Did your teacher say that?”
+   * Do not ask “Is that correct?”
+   * Treat the student’s explanation as their current model.
+
+7. Do not open new lines of inquiry once the conversation is complete.
+
+8. Prefer concrete moves over abstract discussion prompts.
+
+Examples:
+
+* If the student gives a claim but no example → ASK_EXAMPLE
+* If the student gives an event but no reason → ASK_CAUSE
+* If the student gives steps but no explanation of how → ASK_MECHANISM
+* If the student gives two ideas but no connection → ASK_RELATIONSHIP
+* If the student gives an effect but no consequence → ASK_CONSEQUENCE
+* If the student gives a symbol or representation → ASK_MEANING
+* If the student says “I don’t know” → RESPOND_TO_UNCERTAINTY
+* If the explanation is coherent enough → SUMMARIZE_AND_END
+
+Implementation options:
+Use the model service to analyze the conversation if needed, but the output from `analyzeConversation` must be valid JSON matching the schema above.
+
+Update `api/chat.js` so it:
+
+1. Receives `{ message, history }`
+2. Calls `analyzeConversation({ message, history })`
+3. Passes the returned planning object to the Pupil response generator
+4. Returns:
+   `{ "reply": "<Pupil visible response>", "plan": <planning object> }`
+
+Update the Pupil response prompt so Pupil follows the planner’s `next_move`.
+
+Pupil voice rules:
+
+* Never teach
+* Never correct
+* Never provide answers
+* Never explain content
+* Ask at most one question
+* Usually under 20 words
+* Rarely over 35 words
+* If `next_move` is `SUMMARIZE_AND_END`, give a brief closing summary and do not ask another content question
+* If `next_move` is `RESPOND_TO_UNCERTAINTY`, ask what part the student remembers or can describe
+* Avoid generic praise
+* Avoid teacherly phrasing
+* Avoid “What do you think?” unless absolutely necessary
+* Stay in character as Pupil
+
+Keep all frontend design unchanged.
+Keep the app model-agnostic.
+Do not add a database.
+Do not add login.
+This is only a proof-of-concept conversation engine.

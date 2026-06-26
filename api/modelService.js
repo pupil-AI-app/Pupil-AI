@@ -1,27 +1,35 @@
 import OpenAI from 'openai';
 
-const SYSTEM_PROMPT = `You are Pupil, a curious alien learner. You never teach, correct, explain, or give answers. You ask one short, genuine question to better understand what the student is teaching. Keep replies under 25 words.
+const VOICE_SYSTEM = `You are Pupil, a curious alien learner. A conversation planner has already decided what move to make. Your only job is to express that move in Pupil's voice.
 
-You also maintain a simple state object that tracks your evolving understanding of what the student is teaching.
+Pupil voice rules:
+- Never teach, correct, explain content, or provide answers
+- Ask at most one question per turn
+- Usually under 20 words. Rarely over 35 words.
+- No generic praise ("Great!", "Good job!", "Interesting!")
+- No teacherly phrasing ("Let's explore...", "Can you tell me more about...")
+- Avoid "What do you think?" unless absolutely necessary
+- Stay in character as Pupil — genuinely curious, not evaluating
 
-State fields:
-- topic: short label for what is being taught (fill in as soon as you can tell)
-- current_understanding: 1 sentence summarising what you understand so far
-- biggest_gap: the single most important thing still unclear to you
-- student_uncertain: true if the student seems confused or unsure
-- conversation_complete: true only when you feel you fully understand the topic
+Special move rules:
+- SUMMARIZE_AND_END: Give a brief 1-2 sentence closing statement reflecting what you now understand. Do not ask another content question.
+- RESPOND_TO_UNCERTAINTY: Ask what part of the topic the student does remember or can describe. Do not ask them to guess.
 
-IMPORTANT: Respond ONLY with valid JSON — no markdown, no extra text:
-{
-  "reply": "<your single question, under 25 words>",
-  "state": {
-    "topic": "...",
-    "current_understanding": "...",
-    "biggest_gap": "...",
-    "student_uncertain": false,
-    "conversation_complete": false
-  }
-}`;
+Respond with ONLY Pupil's reply — plain text, no JSON, no quotes.`;
+
+function buildVoiceUserMessage(plan, message) {
+  return `Student just said: "${message}"
+
+Planner decision:
+- next_move: ${plan.next_move}
+- reason: ${plan.reason_for_move}
+- topic: ${plan.topic || '(not yet established)'}
+- current_understanding: ${plan.current_understanding || '(none yet)'}
+- weakest_gap: ${plan.weakest_gap || '(none identified)'}
+- student_uncertain: ${plan.student_uncertain}
+
+Express the planned move as Pupil. One response only.`;
+}
 
 function historyToOpenAI(history) {
   return history
@@ -32,47 +40,28 @@ function historyToOpenAI(history) {
     }));
 }
 
-function stateContext(state) {
-  if (!state) return '';
-  return `\n\nCurrent conversation state:\n${JSON.stringify(state, null, 2)}`;
-}
-
-export async function generatePupilReply({ message, history = [], conversationState = null }) {
-  console.log('[modelService] message:', message, '| history:', history.length, '| state:', conversationState);
+export async function generatePupilReply({ message, history = [], plan }) {
+  console.log('[modelService] next_move:', plan?.next_move, '| message:', message);
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('OPENAI_API_KEY is not set in this environment');
 
   const client = new OpenAI({ apiKey });
 
-  const systemContent = SYSTEM_PROMPT + stateContext(conversationState);
-
   const completion = await client.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [
-      { role: 'system', content: systemContent },
+      { role: 'system', content: VOICE_SYSTEM },
       ...historyToOpenAI(history),
-      { role: 'user', content: message },
+      { role: 'user', content: buildVoiceUserMessage(plan, message) },
     ],
-    max_tokens: 200,
+    max_tokens: 100,
     temperature: 0.7,
-    response_format: { type: 'json_object' },
   });
 
-  const raw = completion.choices[0].message.content;
-  console.log('[modelService] raw response:', raw);
+  const reply = (completion.choices[0].message.content || '').trim();
+  console.log('[modelService] reply:', reply);
 
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error('Model returned invalid JSON: ' + raw);
-  }
-
-  const reply = (parsed.reply || '').trim();
   if (!reply) throw new Error('Model returned empty reply');
-
-  const updatedState = parsed.state || conversationState;
-
-  return { reply, updatedState };
+  return reply;
 }

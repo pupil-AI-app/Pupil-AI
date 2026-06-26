@@ -112,7 +112,7 @@ function SubjectSelect({ grade, onConfirm }) {
   );
 }
 
-function Chat({ onFinish }) {
+function Chat({ grade, onFinish }) {
   const [messages, setMessages] = useState(starterMessages);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -132,7 +132,7 @@ function Chat({ onFinish }) {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history: messages, conversationState }),
+        body: JSON.stringify({ message: text, history: messages, conversationState, grade }),
       });
       const data = await res.json();
       const reply = data.reply && data.reply.trim()

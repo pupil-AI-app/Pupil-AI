@@ -8,12 +8,13 @@ export default async function handler(req, res) {
   const body = req.body || {};
   const message = typeof body.message === 'string' ? body.message.trim() : '';
   const history = Array.isArray(body.history) ? body.history : [];
+  const grade = body.grade ? Number(body.grade) : null;
   const conversationState =
     body.conversationState && typeof body.conversationState === 'object'
       ? body.conversationState
       : initialConversationState();
 
-  console.log('[chat] message:', message, '| history turns:', history.length);
+  console.log('[chat] message:', message, '| history turns:', history.length, '| grade:', grade);
 
   if (!message) {
     return res.status(400).json({ reply: "I didn't catch that — can you try again?" });
@@ -24,6 +25,7 @@ export default async function handler(req, res) {
       message,
       history,
       conversationState,
+      grade,
     });
     return res.status(200).json({ reply, conversationState: updatedState });
   } catch (err) {

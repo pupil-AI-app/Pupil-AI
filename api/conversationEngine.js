@@ -145,13 +145,39 @@ Last opener used: "${state.lastOpener || 'none'}"
 Completion signals — example: ${state.hasExample}, explanation: ${state.hasExplanation}, causal link: ${state.hasCausalLink}`;
 }
 
+// ─── Grade language profile ───────────────────────────────────────────────────
+
+function gradeProfile(grade) {
+  const g = Number(grade);
+  if (!g) return '';
+  if (g <= 5) return `STUDENT GRADE LEVEL: Grade ${g} (ages 8–11).
+Pupil uses very short, simple sentences. No jargon or academic vocabulary. Concrete, everyday comparisons only (cookies, recess, pets). Pupil can sound confused and a little silly. Questions are simple and direct. Maximum one clause per sentence.
+Good: "Wait — so the plant is eating the sun?" / "That's like charging a phone but with leaves?"
+Bad: any word like "mechanism", "concept", "derive", "process", "fundamental"`;
+
+  if (g <= 8) return `STUDENT GRADE LEVEL: Grade ${g} (ages 11–14).
+Pupil uses plain, direct sentences. Avoids academic vocabulary — prefers everyday words. Comparisons can involve things a middle-schooler knows (apps, sports, recipes). Pupil sounds curious and a little uncertain, not polished.
+Good: "So it's kind of like a recipe — the plant has the ingredients, just needs the energy to mix them?" / "Wait, if there's no light, does it just stop?"
+Bad: "the underlying mechanism", "conceptually speaking", "in essence"`;
+
+  if (g <= 10) return `STUDENT GRADE LEVEL: Grade ${g} (ages 14–16).
+Pupil uses clear, plain language. Can use familiar academic words (formula, theory, pattern) but avoids formal or abstract phrasing. Sounds like a smart peer, not a teacher. Analogies can be slightly more abstract.
+Good: "So the formula is a shortcut, but someone had to derive it the long way first?" / "If it always works, why do teachers still teach factoring?"`;
+
+  return `STUDENT GRADE LEVEL: Grade ${g} (ages 16–18).
+Pupil can use standard academic vocabulary naturally. Sounds like an intelligent peer thinking through a hard idea. Can engage with nuance, edge cases, and "what if" consequences. Still curious and uncertain — not a narrator.
+Good: "So completing the square is essentially the proof behind the formula — the formula just collapses those steps?" / "Is there a case where the formula gives a result that doesn't make sense in context?"`;
+}
+
 // ─── Prompt ───────────────────────────────────────────────────────────────────
 
-function buildPrompt(state, move) {
+function buildPrompt(state, move, grade) {
   return `You are Pupil — a genuinely curious young alien learner. A student is teaching you something. Your job is to react from your changing internal understanding, not to ask a follow-up question.
 
 CENTRAL RULE: Use the idea before asking about it.
 Ask yourself: "What can I DO with what the student just said?" — test it, apply it, break it, misread it, build from it. Only after doing something should you ask for repair.
+
+${gradeProfile(grade)}
 
 PUPIL'S LEARNING STATE:
 ${stateSummary(state)}
@@ -313,7 +339,7 @@ Respond ONLY with valid JSON:
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export async function runConversationGovernor({ message, history = [], conversationState }) {
+export async function runConversationGovernor({ message, history = [], conversationState, grade = null }) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('OPENAI_API_KEY is not set');
 
@@ -331,7 +357,7 @@ export async function runConversationGovernor({ message, history = [], conversat
   const completion = await client.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [
-      { role: 'system', content: buildPrompt(conversationState, enforced) },
+      { role: 'system', content: buildPrompt(conversationState, enforced, grade) },
       ...historyMessages,
       { role: 'user', content: message },
     ],

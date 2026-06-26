@@ -8,7 +8,12 @@ const SYSTEM_PROMPT =
 export async function generatePupilReply({ message }) {
   console.log('[modelService] incoming message:', message);
 
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not set in this environment');
+  }
+
+  const client = new OpenAI({ apiKey });
 
   const completion = await client.chat.completions.create({
     model: 'gpt-4o-mini',

@@ -115,24 +115,31 @@ function SubjectSelect({ grade, onConfirm }) {
 function Chat({ onFinish }) {
   const [messages, setMessages] = useState(starterMessages);
   const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  function sendMessage() {
+  async function sendMessage() {
     const text = input.trim();
-    if (!text) return;
+    if (!text || loading) return;
 
     const studentMessage = { role: 'student', text };
-    const pupilMessage = mockPupilReply(text);
-    setMessages([...messages, studentMessage, pupilMessage]);
+    const next = [...messages, studentMessage];
+    setMessages(next);
     setInput('');
-  }
+    setLoading(true);
 
-  function mockPupilReply(text) {
-    const lower = text.toLowerCase();
-    if (lower.includes('theme')) return { role: 'pupil', text: 'Wait... what happens that shows that theme?' };
-    if (lower.includes('because') || lower.includes('caused')) return { role: 'pupil', text: 'Oh. What changes because of that?' };
-    if (lower.includes('symbol') || lower.includes('represents')) return { role: 'pupil', text: 'Why show it that way instead of saying it directly?' };
-    if (messages.length > 6) return { role: 'pupil', text: 'I think my picture is almost complete. Can I try saying it back?' };
-    return { role: 'pupil', text: 'Can you tell me more about that part?' };
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      const data = await res.json();
+      setMessages([...next, { role: 'pupil', text: data.reply }]);
+    } catch {
+      setMessages([...next, { role: 'pupil', text: 'Sorry, something went wrong. Try again.' }]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -162,9 +169,12 @@ function Chat({ onFinish }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-            placeholder="Teach Pupil something..."
+            placeholder={loading ? 'Pupil is thinking…' : 'Teach Pupil something...'}
+            disabled={loading}
           />
-          <button className="send" onClick={sendMessage} aria-label="Send"><Send size={18} /></button>
+          <button className="send" onClick={sendMessage} aria-label="Send" disabled={loading}>
+            <Send size={18} />
+          </button>
         </div>
       </section>
     </main>

@@ -108,6 +108,8 @@ h1 { font-size: clamp(42px, 7vw, 82px); line-height: 0.92; letter-spacing: -0.07
 .composer { display: flex; gap: 10px; background: white; border: 1px solid var(--line); border-radius: 24px; padding: 10px; }
 .composer input { flex: 1; border: 0; outline: 0; padding: 10px 12px; background: transparent; }
 .send { border: 0; width: 44px; height: 44px; border-radius: 50%; background: var(--navy); color: var(--chalk); display: grid; place-items: center; }
+.send:disabled { opacity: 0.4; cursor: not-allowed; }
+.composer input:disabled { opacity: 0.6; }
 
 .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .report-card { background: white; border: 1px solid var(--line); border-radius: 22px; padding: 22px; }

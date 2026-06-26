@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "clMtyBbGrwje4z4KKVBI2"
+uri = "file://docs/pupil-conversation-engine.md"
+type = "text"
+title = "Pupil Conversation Engine — Instruction Reference"

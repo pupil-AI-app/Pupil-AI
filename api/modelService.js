@@ -5,8 +5,17 @@ const SYSTEM_PROMPT =
   'You ask one short, genuine question to better understand what the student is teaching. ' +
   'Keep replies under 25 words.';
 
-export async function generatePupilReply({ message }) {
-  console.log('[modelService] incoming message:', message);
+function historyToOpenAI(history) {
+  return history
+    .filter(m => m.role === 'pupil' || m.role === 'student')
+    .map(m => ({
+      role: m.role === 'pupil' ? 'assistant' : 'user',
+      content: m.text,
+    }));
+}
+
+export async function generatePupilReply({ message, history = [] }) {
+  console.log('[modelService] incoming message:', message, '| history turns:', history.length);
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -15,12 +24,15 @@ export async function generatePupilReply({ message }) {
 
   const client = new OpenAI({ apiKey });
 
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    ...historyToOpenAI(history),
+    { role: 'user', content: message },
+  ];
+
   const completion = await client.chat.completions.create({
     model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: message },
-    ],
+    messages,
     max_tokens: 80,
     temperature: 0.7,
   });
@@ -29,8 +41,6 @@ export async function generatePupilReply({ message }) {
   console.log('[modelService] raw model response:', raw);
 
   const reply = (raw || '').trim();
-  console.log('[modelService] final reply:', reply);
-
   if (!reply) throw new Error('Model returned empty response');
 
   return reply;

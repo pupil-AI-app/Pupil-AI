@@ -1,5 +1,4 @@
-import { analyzeConversation } from './conversationEngine.js';
-import { generatePupilReply } from './modelService.js';
+import { runConversationGovernor, initialConversationState } from './conversationEngine.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -9,6 +8,10 @@ export default async function handler(req, res) {
   const body = req.body || {};
   const message = typeof body.message === 'string' ? body.message.trim() : '';
   const history = Array.isArray(body.history) ? body.history : [];
+  const conversationState =
+    body.conversationState && typeof body.conversationState === 'object'
+      ? body.conversationState
+      : initialConversationState();
 
   console.log('[chat] message:', message, '| history turns:', history.length);
 
@@ -17,11 +20,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const plan = await analyzeConversation({ message, history });
-    console.log('[chat] plan:', plan.next_move, '| complete:', plan.conversation_complete);
-
-    const reply = await generatePupilReply({ message, history, plan });
-    return res.status(200).json({ reply, plan });
+    const { reply, conversationState: updatedState } = await runConversationGovernor({
+      message,
+      history,
+      conversationState,
+    });
+    return res.status(200).json({ reply, conversationState: updatedState });
   } catch (err) {
     console.error('[chat] error:', err.message);
     return res.status(500).json({ reply: "I'm having trouble hearing that. Can you try again?" });

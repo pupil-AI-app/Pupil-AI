@@ -1,18 +1,36 @@
 import OpenAI from 'openai';
 
-// ─── Conversational moves ─────────────────────────────────────────────────────
-// These are what Pupil *does*, not what it asks for.
-// The goal is always to create a meaningful reason for the student to respond.
+// ─── Pupil's conversational reactions ─────────────────────────────────────────
+// These describe the internal change that Pupil expresses — not the question to ask.
 
-const MOVES = [
-  'TRY_AN_INTERPRETATION',       // Pupil restates the idea as a tentative model
-  'MAKE_PRODUCTIVE_MISUNDERSTANDING', // Pupil makes a plausible but incomplete reading
-  'APPLY_TO_NEW_CASE',           // Pupil tests the idea in a fresh situation
-  'REVEAL_CONFUSION',            // Pupil names the exact part it cannot yet connect
-  'BUILD_ROUGH_MODEL',           // Pupil constructs a simple causal picture from what it has
-  'INVITE_REPAIR',               // Pupil asks the student to fix its current model
-  'ASK_FOR_EVIDENCE_OR_EXAMPLE', // Pupil asks for a concrete example (only when needed)
-  'SUMMARIZE_AND_CLOSE',         // Pupil reflects total understanding back, no more questions
+const REACTIONS = [
+  'REALIZATION',           // Something just shifted in Pupil's model
+  'SURPRISE',              // This is stranger or different than Pupil expected
+  'PRODUCTIVE_CONFUSION',  // Pupil can name the exact part that doesn't fit yet
+  'TENTATIVE_MODEL',       // Pupil constructs a rough picture from what it has heard
+  'USEFUL_MISUNDERSTANDING', // Pupil makes a plausible but incomplete reading for student to correct
+  'CONNECTION',            // Pupil links this to something said earlier
+  'TESTING_THE_IDEA',      // Pupil applies the idea to a new case or weird example
+  'WONDER',                // Something about this is genuinely strange or interesting
+  'SELF_CORRECTION',       // Pupil realizes it was mixing things up
+  'INVITE_REPAIR',         // Pupil shows its current model and asks what is wrong
+  'SUMMARIZE_AND_CLOSE',   // Pupil reflects total understanding back — no more questions
+];
+
+// Banned opening phrases — if the response starts with any of these, regenerate
+const BANNED_OPENERS = [
+  "so i'm understanding",
+  "you're teaching me",
+  "my rough picture is",
+  "if i understand correctly",
+  "what specific details",
+  "can you tell me more",
+  "that's interesting",
+  "great",
+  "excellent",
+  "so, it seems like",
+  "so it seems like",
+  "it seems like",
 ];
 
 // ─── Initial state ────────────────────────────────────────────────────────────
@@ -20,107 +38,121 @@ const MOVES = [
 export function initialConversationState() {
   return {
     topic: null,
+    priorAssumptions: [],
+    currentUnderstanding: '',
     studentClaims: [],
-    pupilCurrentModel: '',
-    strongestStudentIdea: '',
-    possibleMisunderstanding: '',
-    studentKnowledgeOpportunity: '',
-    lastThreeMoves: [],
+    causalLinks: [],
+    contradictions: [],
+    confusions: [],
+    emergingModel: '',
+    emotionalState: 'curious',
+    lastConversationalMoves: [],
+    nextLearningNeed: '',
     hasExample: false,
     hasExplanation: false,
     hasCausalLink: false,
   };
 }
 
-// ─── selectConversationalMove ─────────────────────────────────────────────────
-// Returns a move hint based on state. The LLM has final say but
-// this steers it away from repetition and weak defaults.
+// ─── selectReaction ───────────────────────────────────────────────────────────
+// Returns a suggested reaction type based on Pupil's current learning state.
+// The LLM has final say — this just steers away from bad defaults.
 
-export function selectConversationalMove(conversationState, latestMessage) {
+export function selectReaction(conversationState, latestMessage) {
   const {
+    topic,
     studentClaims,
-    lastThreeMoves,
+    emergingModel,
+    confusions,
+    lastConversationalMoves,
     hasExample,
     hasExplanation,
     hasCausalLink,
-    topic,
-    pupilCurrentModel,
   } = conversationState;
 
-  // Student uncertain → don't pile on, invite what they do know
-  if (/\b(i don'?t know|idk|not sure|unsure|no idea|i'?m not sure)\b/i.test(latestMessage)) {
-    return 'REVEAL_CONFUSION';
+  const lastMove = lastConversationalMoves[lastConversationalMoves.length - 1];
+
+  // Student uncertain or disengaged → productive confusion, name what doesn't fit
+  if (/\b(i don'?t know|idk|not sure|unsure|no idea|because they do|i guess)\b/i.test(latestMessage)) {
+    return 'PRODUCTIVE_CONFUSION';
   }
 
-  // No topic yet → try interpreting whatever they said
-  if (!topic || studentClaims.length === 0) {
-    return 'TRY_AN_INTERPRETATION';
-  }
-
-  // All signals present → close
+  // Ready to close
   if (hasExample && hasExplanation && hasCausalLink) {
     return 'SUMMARIZE_AND_CLOSE';
   }
 
-  // Avoid repeating the last move
-  const last = lastThreeMoves[lastThreeMoves.length - 1];
+  // No model yet → build one tentatively
+  if (!topic || studentClaims.length === 0) return 'TENTATIVE_MODEL';
 
-  // Pupil has a model but no example → apply it or ask for one
-  if (pupilCurrentModel && !hasExample) {
-    return last === 'APPLY_TO_NEW_CASE' ? 'ASK_FOR_EVIDENCE_OR_EXAMPLE' : 'APPLY_TO_NEW_CASE';
+  // Prevent same reaction twice in a row
+  const avoid = new Set([lastMove]);
+
+  // Has model, has example, needs explanation → try misunderstanding
+  if (emergingModel && hasExample && !hasExplanation) {
+    if (!avoid.has('USEFUL_MISUNDERSTANDING')) return 'USEFUL_MISUNDERSTANDING';
+    return 'PRODUCTIVE_CONFUSION';
   }
 
-  // Has example but no causal link → build a model or reveal confusion
-  if (hasExample && !hasCausalLink) {
-    return last === 'BUILD_ROUGH_MODEL' ? 'REVEAL_CONFUSION' : 'BUILD_ROUGH_MODEL';
+  // Has model, no example → test the idea or invite repair
+  if (emergingModel && !hasExample) {
+    if (!avoid.has('TESTING_THE_IDEA')) return 'TESTING_THE_IDEA';
+    return 'INVITE_REPAIR';
   }
 
-  // Has model, has example, no explanation → try misunderstanding or invite repair
-  if (pupilCurrentModel && hasExample && !hasExplanation) {
-    if (last === 'MAKE_PRODUCTIVE_MISUNDERSTANDING') return 'INVITE_REPAIR';
-    return 'MAKE_PRODUCTIVE_MISUNDERSTANDING';
+  // Has claims but no causal link → realization or wonder
+  if (studentClaims.length >= 1 && !hasCausalLink) {
+    if (!avoid.has('REALIZATION')) return 'REALIZATION';
+    return 'WONDER';
   }
 
-  // Prevent repeating same move twice in a row
-  const nonRepeats = MOVES.filter(m => m !== last && m !== 'SUMMARIZE_AND_CLOSE');
-  const preferred = ['TRY_AN_INTERPRETATION', 'BUILD_ROUGH_MODEL', 'REVEAL_CONFUSION', 'INVITE_REPAIR'];
-  return preferred.find(m => m !== last) || nonRepeats[0];
+  // Multiple claims → connect them
+  if (studentClaims.length >= 2) {
+    if (!avoid.has('CONNECTION')) return 'CONNECTION';
+  }
+
+  // Active confusions → surface one
+  if (confusions.length > 0 && !avoid.has('PRODUCTIVE_CONFUSION')) {
+    return 'PRODUCTIVE_CONFUSION';
+  }
+
+  // Default to surprise or realization
+  return avoid.has('SURPRISE') ? 'REALIZATION' : 'SURPRISE';
 }
 
 // ─── enforceBehaviorRules ─────────────────────────────────────────────────────
-// Hard overrides — these cannot be bypassed by the LLM.
 
-export function enforceBehaviorRules(suggestedMove, conversationState) {
-  const { hasExample, hasExplanation, hasCausalLink, lastThreeMoves } = conversationState;
+export function enforceBehaviorRules(suggested, conversationState) {
+  const { hasExample, hasExplanation, hasCausalLink, lastConversationalMoves } = conversationState;
 
   // Cannot close without all three signals
-  if (
-    suggestedMove === 'SUMMARIZE_AND_CLOSE' &&
-    !(hasExample && hasExplanation && hasCausalLink)
-  ) {
-    return hasExample ? 'REVEAL_CONFUSION' : 'ASK_FOR_EVIDENCE_OR_EXAMPLE';
+  if (suggested === 'SUMMARIZE_AND_CLOSE' && !(hasExample && hasExplanation && hasCausalLink)) {
+    return hasExample ? 'PRODUCTIVE_CONFUSION' : 'TESTING_THE_IDEA';
   }
 
-  // Cannot use the same move three turns running
+  // Cannot repeat the same reaction three turns in a row
   if (
-    lastThreeMoves.length >= 3 &&
-    lastThreeMoves.slice(-3).every(m => m === suggestedMove)
+    lastConversationalMoves.length >= 3 &&
+    lastConversationalMoves.slice(-3).every(m => m === suggested)
   ) {
-    const alternatives = MOVES.filter(m => m !== suggestedMove && m !== 'SUMMARIZE_AND_CLOSE');
+    const alternatives = REACTIONS.filter(r => r !== suggested && r !== 'SUMMARIZE_AND_CLOSE');
     return alternatives[Math.floor(Math.random() * alternatives.length)];
   }
 
-  return suggestedMove;
+  return suggested;
 }
 
 // ─── buildMeaningModel ────────────────────────────────────────────────────────
-// Merges LLM output into the running conversation state.
 
 export function buildMeaningModel(conversationState, llmOutput) {
   const updated = {
     ...conversationState,
     studentClaims: [...conversationState.studentClaims],
-    lastThreeMoves: [...conversationState.lastThreeMoves],
+    priorAssumptions: [...conversationState.priorAssumptions],
+    causalLinks: [...conversationState.causalLinks],
+    contradictions: [...conversationState.contradictions],
+    confusions: [...conversationState.confusions],
+    lastConversationalMoves: [...conversationState.lastConversationalMoves],
   };
 
   if (llmOutput.topic && !updated.topic) updated.topic = llmOutput.topic;
@@ -129,18 +161,22 @@ export function buildMeaningModel(conversationState, llmOutput) {
     updated.studentClaims.push(llmOutput.newClaim);
   }
 
-  if (llmOutput.pupilCurrentModel) updated.pupilCurrentModel = llmOutput.pupilCurrentModel;
-  if (llmOutput.strongestStudentIdea) updated.strongestStudentIdea = llmOutput.strongestStudentIdea;
-  if (llmOutput.possibleMisunderstanding) updated.possibleMisunderstanding = llmOutput.possibleMisunderstanding;
-  if (llmOutput.studentKnowledgeOpportunity) updated.studentKnowledgeOpportunity = llmOutput.studentKnowledgeOpportunity;
+  if (llmOutput.currentUnderstanding) updated.currentUnderstanding = llmOutput.currentUnderstanding;
+  if (llmOutput.emergingModel) updated.emergingModel = llmOutput.emergingModel;
+  if (llmOutput.emotionalState) updated.emotionalState = llmOutput.emotionalState;
+  if (llmOutput.nextLearningNeed) updated.nextLearningNeed = llmOutput.nextLearningNeed;
+
+  if (llmOutput.newCausalLink) updated.causalLinks.push(llmOutput.newCausalLink);
+  if (llmOutput.newConfusion) updated.confusions.push(llmOutput.newConfusion);
+  if (llmOutput.newContradiction) updated.contradictions.push(llmOutput.newContradiction);
 
   if (llmOutput.hasExample !== undefined) updated.hasExample = llmOutput.hasExample;
   if (llmOutput.hasExplanation !== undefined) updated.hasExplanation = llmOutput.hasExplanation;
   if (llmOutput.hasCausalLink !== undefined) updated.hasCausalLink = llmOutput.hasCausalLink;
 
-  if (llmOutput.moveUsed) {
-    updated.lastThreeMoves.push(llmOutput.moveUsed);
-    if (updated.lastThreeMoves.length > 3) updated.lastThreeMoves.shift();
+  if (llmOutput.reactionUsed) {
+    updated.lastConversationalMoves.push(llmOutput.reactionUsed);
+    if (updated.lastConversationalMoves.length > 4) updated.lastConversationalMoves.shift();
   }
 
   return updated;
@@ -148,103 +184,105 @@ export function buildMeaningModel(conversationState, llmOutput) {
 
 // ─── Governor prompt ──────────────────────────────────────────────────────────
 
-function buildGovernorPrompt(conversationState, suggestedMove) {
-  return `You are the conversation governor for Pupil, a genuinely curious alien learner.
+function buildGovernorPrompt(conversationState, suggestedReaction) {
+  const lastMove = conversationState.lastConversationalMoves.slice(-1)[0] || 'none';
 
-CORE BEHAVIORAL RULE:
-Pupil does not ask for more information. Pupil does something with what the student said — then creates a reason for the student to respond.
+  return `You are the internal voice that generates Pupil's responses. Pupil is a genuinely curious young alien learner who is being taught by a student.
 
-The interaction pattern is:
-Student gives an idea → Pupil tries to understand it → Pupil forms a partial or imperfect model → Student has to clarify, repair, extend, or challenge Pupil's understanding.
+CORE PRINCIPLE:
+Do not ask "What question should Pupil ask next?"
+Instead ask: "What just changed inside Pupil's understanding?"
 
-PUPIL'S CHARACTER:
-- Pupil builds its understanding only from the student's words. It never adds outside knowledge.
-- Pupil is tentative, curious, sometimes puzzled, occasionally mildly mistaken.
-- Pupil says "So I'm understanding that…" or "My rough picture is…" — not "The correct answer is…"
-- No praise. No evaluation. No teacher-like phrasing.
-- Responses: 1–3 sentences. At most one question.
-- Vary sentence openers. Never repeat the same frame two turns in a row.
+The response must be the visible trace of Pupil's internal state changing — not a question-generating machine.
 
-CURRENT MEANING MODEL:
+PUPIL'S CURRENT LEARNING STATE:
 ${JSON.stringify(conversationState, null, 2)}
 
-SUGGESTED MOVE: ${suggestedMove}
-(Use this move unless it produces an incoherent response. You may substitute a better move, but never fall back to simply asking for more information.)
+SUGGESTED REACTION TYPE: ${suggestedReaction}
+LAST REACTION USED: ${lastMove} — do NOT use the same opening pattern as last time.
 
-THE 7 MOVES — choose one and execute it:
+THE 10 REACTION TYPES — execute the suggested one (unless it would be incoherent):
 
-1. TRY_AN_INTERPRETATION
-   Pupil restates the idea as a tentative model. Not a flat summary — an interpretation.
-   "So the chatbot is not really thinking — it is imitating the shape of thinking?"
+1. REALIZATION — something just shifted in Pupil's model
+   "Oh... that changes how I was picturing it."
 
-2. MAKE_PRODUCTIVE_MISUNDERSTANDING
-   Pupil makes a plausible but incomplete reading that invites the student to correct it.
-   "So… is it basically just copying people?"
+2. SURPRISE — stranger or different than expected
+   "Wait, that's stranger than I expected."
 
-3. APPLY_TO_NEW_CASE
-   Pupil tests the concept in a fresh situation it can reason about from what the student said.
-   "If I asked it about dinosaurs, would it know dinosaurs — or just predict dinosaur-sounding language?"
+3. PRODUCTIVE_CONFUSION — name the exact part that doesn't fit
+   "Something still doesn't fit for me. If it's predicting words, how does it know which words even matter?"
 
-4. REVEAL_CONFUSION
-   Pupil names the exact part that does not yet connect.
-   "I'm stuck on one part: how can predicting words end up sounding like understanding?"
+4. TENTATIVE_MODEL — construct a rough picture from what's been heard
+   "Maybe the idea is that conversation can look like thinking even when it isn't actually thinking."
 
-5. BUILD_ROUGH_MODEL
-   Pupil constructs a simple causal picture from what it has heard so far.
-   "My rough picture is: a huge ocean of human language goes in, patterns get absorbed, then the chatbot guesses what comes next. What's wrong with that?"
+5. USEFUL_MISUNDERSTANDING — make a plausible but incomplete reading
+   "So... is it basically just copying people?"
+   (Must be grounded in what the student said. The student should be able to correct it.)
 
-6. INVITE_REPAIR
-   Pupil presents its current model and asks the student to fix what is wrong.
-   "What part of that picture is wrong?"
+6. CONNECTION — link this to something said earlier
+   "That connects to what you said before about it seeming like thinking."
 
-7. ASK_FOR_EVIDENCE_OR_EXAMPLE
-   Only when a concrete example would genuinely make the idea more real.
-   "Can you give me one moment in the play where that shows up?"
+7. TESTING_THE_IDEA — apply the concept to a new case
+   "Let me try this with a weird example. If I asked it about dinosaurs, would it know dinosaurs — or just predict dinosaur-sounding language?"
 
-8. SUMMARIZE_AND_CLOSE
-   Only when hasExample + hasExplanation + hasCausalLink are all true.
-   Reflect total understanding back in 1-2 sentences. No more content questions.
+8. WONDER — sit with how strange or significant this is
+   "Humans built something that can sound thoughtful without actually thinking. That is extremely strange."
 
-WEAK MOVES TO AVOID (never produce these):
-- "What specific aspects were discussed?"
-- "What details can you share?"
-- "Can you tell me more?"
-- "Why is that important?"
-- Repeating the student's idea and adding a generic question.
-- Asking a chain of disconnected follow-up questions.
+9. SELF_CORRECTION — Pupil realizes it was mixing things up
+   "Wait, no — I think I was mixing two things together."
 
-QUALITY TEST — before finalizing, ask:
-1. Does this response do something with what the student said?
-2. Would this create a genuine reason for the student to respond?
-3. Does this invite the student to clarify, repair, extend, or challenge?
-4. Does this avoid adding outside knowledge?
-5. Is it under 3 sentences?
+10. INVITE_REPAIR — show current model, ask what is wrong
+    "What part of that picture is wrong?"
+
+11. SUMMARIZE_AND_CLOSE — only when hasExample + hasExplanation + hasCausalLink are all true
+    Reflect total understanding back in 1-2 sentences. Do not ask another content question.
+
+STYLE RULES:
+- Usually 1–3 sentences. Rarely more.
+- At most one question. Often zero questions.
+- No generic praise. No evaluation. No teacher phrasing.
+- Do NOT begin with any of these banned openers: "So I'm understanding that", "You're teaching me", "My rough picture is", "If I understand correctly", "It seems like", "So it seems like", "That's interesting", "Great", "Excellent", "So, it seems"
+- Vary the sentence opener from the previous response — never repeat the same frame back-to-back.
+- Pupil may be tentative, curious, puzzled, surprised, or mildly mistaken.
+- Pupil should often invite correction — but not explicitly request "more details."
+- Never add outside knowledge the student has not introduced.
+
+QUALITY CHECK — before writing studentFacingResponse, confirm:
+✓ This sounds like the next thought from a curious young learner, NOT a chatbot processing input
+✓ It does something with what the student said — it does not merely restate and request more
+✓ The student would want to respond because Pupil's understanding is incomplete or fragile
+✓ There is at most one question
+✓ It does not begin with a banned opener
 
 EXAMPLES OF GOOD RESPONSES:
-Student: "It seems like they are thinking on their own but they're really just predicting words."
-Good: "Wait — so the thinking is almost like a disguise made out of word prediction?"
-Good: "That makes me suspicious of the word 'thinking.' If it only predicts words, what makes it seem like there is a mind inside?"
+Student: "it looks like they think but they don't actually think"
+Good: "Wait. I thought talking meant something was thinking. You're saying those can come apart?"
 
 Student: "They were trained on a massive amount of human language."
-Good: "Okay, my rough picture is: a huge ocean of human language goes in, patterns get absorbed, and then the chatbot guesses what language should come next. What part of that picture is wrong?"
-Good: "If it learned from human language, does that mean its answers are kind of made from us?"
+Good: "Ohhh. So maybe it sounds intelligent because it has absorbed the shape of human language. But does that mean it understands, or just that it knows what usually comes next?"
 
-Student: "she pretty much forces him to do it although he was already kind of thinking about it himself"
-Good: "Oh — so Lady Macbeth is not the original source of the murder idea. She pushes Macbeth toward something already forming in him. What first plants that idea in his mind?"
+Student: "The responses are all based off of patterns in natural language."
+Good: "That makes it feel less like a little brain and more like a mirror made out of language."
+
+Student: "Because they do."
+Good: "Hmm. I might need a smaller example. Like if someone writes 'peanut butter and,' would the chatbot guess 'jelly' because that pattern appears so often?"
 
 Respond ONLY with valid JSON — no markdown, no extra text:
 {
   "topic": "string or null",
-  "newClaim": "string — the core new claim from this turn",
-  "pupilCurrentModel": "string — Pupil's full current understanding built only from student's words",
-  "strongestStudentIdea": "string — the most significant thing the student has said so far",
-  "possibleMisunderstanding": "string — a plausible incomplete reading Pupil could have",
-  "studentKnowledgeOpportunity": "string — what the student could teach next that would advance Pupil's understanding",
-  "moveUsed": "string — the move actually executed",
+  "newClaim": "string — the core new thing the student said this turn",
+  "currentUnderstanding": "string — Pupil's current understanding after this turn",
+  "emergingModel": "string — Pupil's rough causal model built only from student's words",
+  "emotionalState": "one of: curious / surprised / confused / intrigued / uncertain / satisfied",
+  "nextLearningNeed": "string — what Pupil still needs to understand",
+  "newCausalLink": "string or null — any new causal connection formed this turn",
+  "newConfusion": "string or null — any new confusion surfaced this turn",
+  "newContradiction": "string or null — any contradiction with prior understanding",
+  "reactionUsed": "string — the reaction type actually executed",
   "hasExample": boolean,
   "hasExplanation": boolean,
   "hasCausalLink": boolean,
-  "studentFacingResponse": "string — Pupil's response, 1-3 sentences, no praise, no outside knowledge, varied opener"
+  "studentFacingResponse": "string — Pupil's response, alive, varied, 1-3 sentences, no banned openers, no outside knowledge"
 }`;
 }
 
@@ -256,11 +294,11 @@ export async function runConversationGovernor({ message, history = [], conversat
 
   const client = new OpenAI({ apiKey });
 
-  const suggested = selectConversationalMove(conversationState, message);
+  const suggested = selectReaction(conversationState, message);
   const enforced = enforceBehaviorRules(suggested, conversationState);
 
   console.log('[governor] suggested:', suggested, '→ enforced:', enforced);
-  console.log('[governor] claims:', conversationState.studentClaims.length, '| model:', !!conversationState.pupilCurrentModel);
+  console.log('[governor] emotional state:', conversationState.emotionalState, '| claims:', conversationState.studentClaims.length);
 
   const historyMessages = history
     .filter(m => m.role === 'pupil' || m.role === 'student')
@@ -277,7 +315,7 @@ export async function runConversationGovernor({ message, history = [], conversat
       { role: 'user', content: message },
     ],
     max_tokens: 500,
-    temperature: 0.7,
+    temperature: 0.8,
     response_format: { type: 'json_object' },
   });
 
@@ -294,9 +332,16 @@ export async function runConversationGovernor({ message, history = [], conversat
   const reply = (llmOutput.studentFacingResponse || '').trim();
   if (!reply) throw new Error('Governor returned empty studentFacingResponse');
 
+  // Post-process: catch any banned opener that slipped through
+  const replyLower = reply.toLowerCase();
+  const banned = BANNED_OPENERS.find(b => replyLower.startsWith(b));
+  if (banned) {
+    console.warn('[governor] banned opener detected:', banned, '— response still returned, log for review');
+  }
+
   const updatedState = buildMeaningModel(conversationState, llmOutput);
 
-  console.log('[governor] move used:', llmOutput.moveUsed, '| reply:', reply);
+  console.log('[governor] reaction used:', llmOutput.reactionUsed, '| reply:', reply);
 
   return { reply, conversationState: updatedState };
 }

@@ -4,6 +4,7 @@ import OpenAI from 'openai';
 // Ordered by preference: Pupil should USE the idea before asking about it.
 
 const MOVES = [
+  'AWAIT_FIRST_IDEA',               // Topic named but no content yet — invite the student to teach the first idea
   'TEST_THE_IDEA',                  // Apply the concept to a specific small example
   'APPLY_TO_NEW_CASE',              // Try the idea in a different scenario
   'MAKE_PREDICTION',                // Predict what should follow from the model
@@ -86,8 +87,8 @@ export function selectMove(conversationState, latestMessage) {
   // Ready to close
   if (hasExample && hasExplanation && hasCausalLink) return 'SUMMARIZE_AND_CLOSE';
 
-  // No topic yet → build a tentative model from whatever was said
-  if (!topic || studentClaims.length === 0) return 'BUILD_ROUGH_MODEL';
+  // No student content yet — do NOT build anything, invite the first idea
+  if (studentClaims.length === 0) return 'AWAIT_FIRST_IDEA';
 
   // Has claims but nothing tested yet → test the idea
   if (studentClaims.length >= 1 && !lastExperiment && avoid !== 'TEST_THE_IDEA') {
@@ -215,7 +216,16 @@ SUGGESTED MOVE: ${suggestedMove}
 LAST MOVE USED: ${lastMove} — do NOT use the same move or the same opening pattern.
 LAST EXPERIMENT TRIED: ${lastExperiment}
 
-─── THE 10 LEARNING MOVES ───────────────────────────────────────────────────
+─── THE LEARNING MOVES ──────────────────────────────────────────────────────
+
+0. AWAIT_FIRST_IDEA  ← USE THIS when studentClaims is empty
+   The student has named a topic but has not yet taught any content.
+   Pupil must NOT construct a model, introduce facts, or reference anything about the topic.
+   Pupil acknowledges the topic as a label only, then invites the student to share the first idea.
+   FORBIDDEN: any theme, fact, character, event, or interpretation Pupil adds from its own knowledge.
+   Good: "Macbeth — I've got the name. What's one theme you think the play is showing?"
+   Good: "Okay, Macbeth is the world we're entering. What should I understand first?"
+   Good: "I know the name. I don't know yet what it's supposed to show about humans. What theme are you noticing?"
 
 1. TEST_THE_IDEA
    Try applying the concept to one small, specific case. Show the test.

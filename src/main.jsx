@@ -134,9 +134,12 @@ function Chat({ onFinish }) {
         body: JSON.stringify({ message: text }),
       });
       const data = await res.json();
-      setMessages([...next, { role: 'pupil', text: data.reply }]);
+      const reply = data.reply && data.reply.trim()
+        ? data.reply.trim()
+        : "I'm having trouble hearing that. Can you try again?";
+      setMessages([...next, { role: 'pupil', text: reply }]);
     } catch {
-      setMessages([...next, { role: 'pupil', text: 'Sorry, something went wrong. Try again.' }]);
+      setMessages([...next, { role: 'pupil', text: "I'm having trouble hearing that. Can you try again?" }]);
     } finally {
       setLoading(false);
     }

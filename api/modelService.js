@@ -6,6 +6,8 @@ const SYSTEM_PROMPT =
   'Keep replies under 25 words.';
 
 export async function generatePupilReply({ message }) {
+  console.log('[modelService] incoming message:', message);
+
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
   const completion = await client.chat.completions.create({
@@ -18,5 +20,13 @@ export async function generatePupilReply({ message }) {
     temperature: 0.7,
   });
 
-  return completion.choices[0].message.content.trim();
+  const raw = completion.choices[0].message.content;
+  console.log('[modelService] raw model response:', raw);
+
+  const reply = (raw || '').trim();
+  console.log('[modelService] final reply:', reply);
+
+  if (!reply) throw new Error('Model returned empty response');
+
+  return reply;
 }

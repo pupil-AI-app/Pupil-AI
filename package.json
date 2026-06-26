@@ -8,9 +8,10 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
+    "lucide-react": "^1.21.0",
+    "openai": "^6.45.0",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "lucide-react": "^1.21.0"
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.3",

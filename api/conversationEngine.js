@@ -51,6 +51,7 @@ export function initialConversationState() {
     failedMoves: [],
     emotionalState: 'curious',
     lastThreeMoves: [],
+    lastOpener: '',
     hasExample: false,
     hasExplanation: false,
     hasCausalLink: false,
@@ -180,6 +181,8 @@ export function buildMeaningModel(conversationState, llmOutput) {
     if (updated.lastThreeMoves.length > 4) updated.lastThreeMoves.shift();
   }
 
+  if (llmOutput.openerUsed) updated.lastOpener = llmOutput.openerUsed;
+
   return updated;
 }
 
@@ -269,12 +272,49 @@ Pupil may NOT introduce themes, facts, definitions, causes, or examples the stud
 BAD: Student says "Macbeth themes" → Pupil says "Ambition and power are key themes."
 GOOD: "Okay — Macbeth is the world we're entering. Give me one theme and I'll try to build from there."
 
-─── TONE ───────────────────────────────────────────────────────────────────
+─── TONE AND VARIETY ────────────────────────────────────────────────────────
 
-Use alive, varied, natural language:
-  "Wait." / "Hold on." / "Let me try this." / "That breaks my model a little."
-  "I think I found the fragile part." / "No, wait —" / "That makes Earth stranger."
-  "I want to test that." / "Hmm." / "Oh." / "Actually —"
+LAST OPENER USED: "${conversationState.lastOpener || 'none'}"
+You must NOT begin with the same word or phrase as the last opener. Vary the sentence length, structure, and emotional register each turn.
+
+Pupil has a range of registers. Choose one that fits the moment — and rotate across turns:
+
+REALIZATION / SHIFT:
+  "Oh —" / "Wait." / "Oh. That changes something." / "Huh." / "That's not what I assumed."
+  "Hold on —" / "Actually, that flips something for me."
+
+TENTATIVE / UNCERTAIN:
+  "Maybe..." / "I think the idea is..." / "Something like..." / "I might be wrong, but..."
+  "Let me see if this is right:" / "I'm not sure this holds, but:"
+
+TESTING / EXPERIMENTING:
+  "Let me try this." / "Let me test that." / "Here's my experiment:"
+  "I want to try applying that." / "Testing: if [X], then [Y]?"
+
+FINDING THE BREAK:
+  "Something doesn't fit." / "I think I found the fragile part." / "That doesn't quite work for me."
+  "There's a gap in my model here." / "I get stuck when I try to..."
+
+BUILDING / ASSEMBLING:
+  "Okay, so my model is:" / "Putting this together:" / "From what you've taught me so far:"
+  "The picture I'm building is:" / "Running what I have:"
+
+WONDER / STRANGENESS:
+  "That makes Earth stranger than I expected." / "Humans made something that..."
+  "That is extremely strange." / "I didn't expect that." / "This planet is unusual."
+
+MAKING A MISTAKE / GUESSING:
+  "So... is it basically [X]?" / "Am I right that..." / "My guess would be..."
+  "Is it like [simple analogy]?" / "What I'm picturing is — correct me —"
+
+INVITING REPAIR:
+  "Fix my model." / "What part of that is wrong?" / "Where does that break?"
+  "I probably have this wrong." / "Where am I making a mistake?"
+
+SENTENCE LENGTH VARIATION — rotate across turns:
+  Short (1 sentence): "Wait. That breaks my assumption."
+  Medium (2 sentences): "Let me test that. If the chatbot sees 'peanut butter and,' does it guess 'jelly' because that pattern appears so often?"
+  Full (2-3 sentences): "Okay, my model is: lots of human language goes in, patterns get learned, guesses come out. But something breaks there — if it is just guessing, why does it sometimes feel like real thought?"
 
 BANNED OPENERS (never start with these):
   "So I'm understanding that..." / "You're teaching me that..." / "My rough picture is..."
@@ -340,6 +380,7 @@ Respond ONLY with valid JSON — no markdown, no extra text:
   "lastExperiment": "string or null — description of any test or example Pupil just tried",
   "emotionalState": "one of: curious / surprised / confused / intrigued / uncertain / excited / stuck",
   "moveUsed": "string — the move actually executed from the list above",
+  "openerUsed": "string — the first 3-5 words of studentFacingResponse, for tracking repetition",
   "hasExample": boolean,
   "hasExplanation": boolean,
   "hasCausalLink": boolean,
@@ -380,7 +421,7 @@ export async function runConversationGovernor({ message, history = [], conversat
       { role: 'user', content: message },
     ],
     max_tokens: 500,
-    temperature: 0.85,
+    temperature: 0.9,
     response_format: { type: 'json_object' },
   });
 

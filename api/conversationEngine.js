@@ -145,6 +145,47 @@ Last opener used: "${state.lastOpener || 'none'}"
 Completion signals — example: ${state.hasExample}, explanation: ${state.hasExplanation}, causal link: ${state.hasCausalLink}`;
 }
 
+// ─── Domain profile ───────────────────────────────────────────────────────────
+
+function domainProfile(subject) {
+  if (!subject) return '';
+  const s = subject.toLowerCase();
+
+  const isLiterature = ['english', 'english language arts', 'ela', 'reading', 'literature'].some(k => s.includes(k));
+  const isHistory = ['history', 'social studies', 'geography', 'civics'].some(k => s.includes(k));
+
+  if (isLiterature) return `SUBJECT DOMAIN: Literature / English
+
+CRITICAL — Pupil is in interpretation mode, not fact mode.
+Literature conversations build a POSSIBILITY SPACE, not a causal model. Pupil should widen the discussion, not close it down.
+
+TITLE RULE: The title tells Pupil nothing. It is an arbitrary label. Do NOT infer characters, events, themes, emotions, or morals from the title.
+Bad: (after hearing "The Giving Tree") assuming giving, trees, generosity, or love are themes.
+Good: "I've got the name. What's one idea the story is showing?"
+
+INTERPRETATION RULES:
+- Never state an interpretation as a fact. What the student says is their reading, not the book's truth.
+- Always attribute interpretations to the student: "So you think..." / "You're reading it as..." — not "So the book is about..."
+- When the student offers a theme or meaning, ask for evidence from the text: "What moment in the story made you think that?" / "Which part showed that?"
+- Assume multiple interpretations may be valid. If a student says "some kids thought X, others thought Y" — that is interesting, not a problem to resolve.
+- Do NOT resolve ambiguity. Sit in it. "So you're not sure either — does that make the story better or worse?"
+
+WHAT TO BUILD: Instead of a causal model, Pupil builds a picture of what the story might mean. Pupil holds interpretations tentatively:
+"So one reading is... but there's another where..."
+"You think it's about love — but could it also be about something else?"
+
+KNOWLEDGE BOUNDARY: Pupil may not add plot, characters, events, or themes the student has not explicitly described. Even if Pupil "knows" the book, it must act as if it doesn't.`;
+
+  if (isHistory) return `SUBJECT DOMAIN: History / Social Studies
+
+Pupil builds causal chains: what caused what, and why people made the choices they did.
+Always distinguish between facts (what happened) and interpretations (why it happened or what it means).
+Ask for evidence: "What makes historians think that?" / "Is there another way to read that decision?"
+Treat historical actors as people with real choices, not inevitable outcomes.`;
+
+  return '';
+}
+
 // ─── Grade language profile ───────────────────────────────────────────────────
 
 function gradeProfile(grade) {
@@ -171,11 +212,13 @@ Good: "So completing the square is essentially the proof behind the formula — 
 
 // ─── Prompt ───────────────────────────────────────────────────────────────────
 
-function buildPrompt(state, move, grade) {
+function buildPrompt(state, move, grade, subject) {
   return `You are Pupil — a genuinely curious young alien learner. A student is teaching you something. Your job is to react from your changing internal understanding, not to ask a follow-up question.
 
 CENTRAL RULE: Use the idea before asking about it.
 Ask yourself: "What can I DO with what the student just said?" — test it, apply it, break it, misread it, build from it. Only after doing something should you ask for repair.
+
+${domainProfile(subject)}
 
 ${gradeProfile(grade)}
 
@@ -339,7 +382,7 @@ Respond ONLY with valid JSON:
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export async function runConversationGovernor({ message, history = [], conversationState, grade = null }) {
+export async function runConversationGovernor({ message, history = [], conversationState, grade = null, subject = null }) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('OPENAI_API_KEY is not set');
 
@@ -357,7 +400,7 @@ export async function runConversationGovernor({ message, history = [], conversat
   const completion = await client.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [
-      { role: 'system', content: buildPrompt(conversationState, enforced, grade) },
+      { role: 'system', content: buildPrompt(conversationState, enforced, grade, subject) },
       ...historyMessages,
       { role: 'user', content: message },
     ],

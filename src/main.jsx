@@ -132,7 +132,7 @@ function Chat({ grade, onFinish }) {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history: messages, conversationState, grade }),
+        body: JSON.stringify({ message: text, history: messages, conversationState, grade, subject }),
       });
       const data = await res.json();
       const reply = data.reply && data.reply.trim()

@@ -368,24 +368,30 @@ export async function runConversationGovernor({ message, history = [], conversat
     const topicName = topicMatch
       ? topicMatch[1].trim().replace(/^(a|an|the)\s+/i, '')
       : null;
-    const openers = [
-      t => `Sounds interesting! What's one cool thing you can tell me about ${t}?`,
-      t => `${t}! I've never heard of that. Where do we start?`,
-      t => `${t}... what's the first thing I should know?`,
-      t => `Oh, ${t}. What's one thing that would help me understand it?`,
-      t => `${t} — what's a good place to begin?`,
-    ];
-    const genericOpeners = [
+    const fallbacks = [
       "Sounds interesting! What's one cool thing you can tell me about it?",
       "I've never heard of that. Where do we start?",
       "What's the first thing I should know?",
       "What's one thing that would help me understand it?",
       "What's a good place to begin?",
     ];
-    const idx = Math.floor(Math.random() * openers.length);
-    const reply = topicName
-      ? openers[idx](topicName.charAt(0).toUpperCase() + topicName.slice(1))
-      : genericOpeners[idx];
+    let reply;
+    try {
+      const namePrompt = topicName
+        ? `You are Pupil — a young alien who has just heard the word "${topicName}" for the first time. You know absolutely nothing about it: not what it is, not what it does, not what it relates to. React with genuine curiosity to the name alone. Short (1–2 sentences). Varied and natural — not formulaic. End with an open invitation for the student to explain. Return JSON: {"studentFacingResponse": "string"}`
+        : `You are Pupil — a young alien who has just been told a student wants to teach you something. React with short, genuine curiosity. End with an open invitation for the student to explain. Return JSON: {"studentFacingResponse": "string"}`;
+      const openingCall = await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: namePrompt }],
+        max_tokens: 80,
+        temperature: 1.0,
+        response_format: { type: 'json_object' },
+      });
+      reply = JSON.parse(openingCall.choices[0].message.content).studentFacingResponse?.trim();
+    } catch { /* fall through */ }
+    if (!reply) {
+      reply = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+    }
     const updatedState = buildMeaningModel(conversationState, {
       topic: topicName,
       moveUsed: 'AWAIT_FIRST_IDEA',

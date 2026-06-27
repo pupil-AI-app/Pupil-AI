@@ -30,11 +30,15 @@ export function selectMove(state) {
     return 'AWAIT_FIRST_IDEA';
   }
 
+  // If summary already happened, the next student message is a confirmation — close gracefully.
+  if (lastThreeMoves.includes('SUMMARIZE_AND_CLOSE')) {
+    return 'CLOSE_GRACEFULLY';
+  }
+
   // Completion: all three quality signals met, OR the student has explained at least 5 distinct ideas.
-  // studentClaims.length is a more reliable signal than LLM-set flags alone.
   const qualityComplete = hasExample && hasExplanation && hasCausalLink;
   const depthComplete = studentClaims.length >= 5;
-  if ((qualityComplete || depthComplete) && !lastThreeMoves.includes('SUMMARIZE_AND_CLOSE')) {
+  if (qualityComplete || depthComplete) {
     return 'SUMMARIZE_AND_CLOSE';
   }
 
@@ -44,13 +48,6 @@ export function selectMove(state) {
 // ─── enforceBehaviorRules ─────────────────────────────────────────────────────
 
 export function enforceBehaviorRules(suggested, state) {
-  const { hasExample, hasExplanation, hasCausalLink } = state;
-
-  // Guard: only close when criteria are genuinely met
-  if (suggested === 'SUMMARIZE_AND_CLOSE' && !(hasExample && hasExplanation && hasCausalLink)) {
-    return 'LEARN';
-  }
-
   return suggested;
 }
 
@@ -309,6 +306,22 @@ export async function runConversationGovernor({ message, history = [], conversat
       moveUsed: 'AWAIT_FIRST_IDEA',
     });
     console.log('[governor] AWAIT_FIRST_IDEA hard-coded | topic:', topicName);
+    return { reply, conversationState: updatedState };
+  }
+
+  // CLOSE_GRACEFULLY is hard-coded — fires once after SUMMARIZE_AND_CLOSE.
+  // Prevents the LLM from looping, re-asking, or evaluating the student.
+  if (enforced === 'CLOSE_GRACEFULLY') {
+    const closings = [
+      "That really helped — I feel like I've got a much clearer picture now. Thanks for teaching me!",
+      "That makes a lot more sense now. I appreciate you walking me through it.",
+      "I didn't know any of that before. Thanks for taking the time to explain it.",
+      "That's genuinely interesting. I've learned something I wouldn't have figured out on my own.",
+      "I feel like I understand this much better now. Thanks for being patient with my questions!",
+    ];
+    const reply = closings[Math.floor(Math.random() * closings.length)];
+    const updatedState = buildMeaningModel(conversationState, { moveUsed: 'CLOSE_GRACEFULLY' });
+    console.log('[governor] CLOSE_GRACEFULLY hard-coded');
     return { reply, conversationState: updatedState };
   }
 

@@ -368,30 +368,42 @@ export async function runConversationGovernor({ message, history = [], conversat
     const topicName = topicMatch
       ? topicMatch[1].trim().replace(/^(a|an|the)\s+/i, '')
       : null;
-    const fallbacks = [
+    const withTopic = topicName ? [
+      t => `Sounds interesting! What's one cool thing you can tell me about ${t}?`,
+      t => `${t}! Never heard that one before. What's the first thing I should know?`,
+      t => `${t}... what even is that? Start me off!`,
+      t => `Oh, ${t}. What's one thing that would help me understand it?`,
+      t => `${t}! What's the best place to begin?`,
+      t => `I love a new word! What can you tell me about ${t}?`,
+      t => `${t}? Tell me everything — well, one thing at a time!`,
+      t => `That's a name I've never heard. What does ${t} actually mean?`,
+      t => `${t}! Where do we start?`,
+      t => `Ooh, ${t}. What's the most important thing about it?`,
+      t => `${t} — okay! Walk me through it from the beginning.`,
+      t => `I'm all ears. What's ${t} all about?`,
+      t => `${t}? I have no idea what that is — perfect, teach me!`,
+      t => `Cool name! What should I know first about ${t}?`,
+      t => `${t}... sounds important. What's one key thing about it?`,
+    ] : null;
+
+    const generic = [
       "Sounds interesting! What's one cool thing you can tell me about it?",
       "I've never heard of that. Where do we start?",
       "What's the first thing I should know?",
       "What's one thing that would help me understand it?",
       "What's a good place to begin?",
+      "I love learning new things! Tell me — what is it?",
+      "Never heard of it. Give me the most important thing first.",
+      "What does it actually mean? Start me off!",
+      "Walk me through it — where do we begin?",
+      "Ooh, what's the big idea behind it?",
     ];
-    let reply;
-    try {
-      const namePrompt = topicName
-        ? `You are Pupil — a young alien who has just heard the word "${topicName}" for the first time. You know absolutely nothing about it: not what it is, not what it does, not what it relates to. React with genuine curiosity to the name alone. Short (1–2 sentences). Varied and natural — not formulaic. End with an open invitation for the student to explain. Return JSON: {"studentFacingResponse": "string"}`
-        : `You are Pupil — a young alien who has just been told a student wants to teach you something. React with short, genuine curiosity. End with an open invitation for the student to explain. Return JSON: {"studentFacingResponse": "string"}`;
-      const openingCall = await client.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: namePrompt }],
-        max_tokens: 80,
-        temperature: 1.0,
-        response_format: { type: 'json_object' },
-      });
-      reply = JSON.parse(openingCall.choices[0].message.content).studentFacingResponse?.trim();
-    } catch { /* fall through */ }
-    if (!reply) {
-      reply = fallbacks[Math.floor(Math.random() * fallbacks.length)];
-    }
+
+    const pool = withTopic || generic;
+    const idx = Math.floor(Math.random() * pool.length);
+    const reply = topicName
+      ? pool[idx](topicName.charAt(0).toUpperCase() + topicName.slice(1))
+      : generic[idx];
     const updatedState = buildMeaningModel(conversationState, {
       topic: topicName,
       moveUsed: 'AWAIT_FIRST_IDEA',

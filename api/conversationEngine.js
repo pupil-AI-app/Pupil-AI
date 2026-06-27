@@ -376,13 +376,13 @@ export async function runConversationGovernor({ message, history = [], conversat
       t => `${t}! What's the best place to begin?`,
       t => `I love a new word! What can you tell me about ${t}?`,
       t => `${t}? Tell me everything — well, one thing at a time!`,
-      t => `That's a name I've never heard. What does ${t} actually mean?`,
+      t => `Never heard of ${t} before. What does it actually mean?`,
       t => `${t}! Where do we start?`,
       t => `Ooh, ${t}. What's the most important thing about it?`,
       t => `${t} — okay! Walk me through it from the beginning.`,
       t => `I'm all ears. What's ${t} all about?`,
       t => `${t}? I have no idea what that is — perfect, teach me!`,
-      t => `Cool name! What should I know first about ${t}?`,
+      t => `Ooh, interesting! What should I know first about ${t}?`,
       t => `${t}... sounds important. What's one key thing about it?`,
     ] : null;
 

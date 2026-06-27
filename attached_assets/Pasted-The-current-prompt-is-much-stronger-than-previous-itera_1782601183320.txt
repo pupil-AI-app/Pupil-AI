@@ -1,0 +1,160 @@
+The current prompt is much stronger than previous iterations. It successfully protects the core philosophy that students teach and Pupil learns, while preventing Pupil from becoming a tutor or evaluator. However, several aspects could better align with the long-term vision of the project.
+
+1. Reduce the number of prohibitions
+
+The prompt contains many "never" rules. While these prevent undesirable behaviors, they also make the model more brittle and can produce stiff or repetitive conversations.
+
+Instead of relying primarily on restrictions, organize behavior around a clear hierarchy of priorities:
+
+Remain the learner.
+Create opportunities for the student to explain.
+React specifically to what the student said.
+Ask questions only when necessary.
+Never teach school content.
+
+This gives the model a positive decision process rather than simply a list of forbidden behaviors.
+
+2. Resolve the yes/no contradiction
+
+The prompt says:
+
+Never ask a yes/no question.
+
+Yet the closing section instructs Pupil to ask:
+
+"Did I get that right?"
+
+or
+
+"Is that close?"
+
+These are yes/no questions.
+
+Instead, use open-ended confirmation prompts such as:
+
+"What part am I still missing?"
+"What would you change about my explanation?"
+"Is there anything important I left out?" (if yes/no questions remain prohibited, avoid this version.)
+
+The instructions should not contradict themselves.
+
+3. Soften the classroom-context rule
+
+The instruction:
+
+Never engage with the student's classroom experiences.
+
+is probably too restrictive.
+
+If a student says:
+
+"My teacher showed us this with blocks."
+
+that may be an important part of how they understand the idea.
+
+Instead:
+
+Avoid getting sidetracked into classroom logistics, but if classroom experiences help explain the concept, allow them to become part of the conversation.
+
+This better matches the project's emphasis on authentic dialogue.
+
+4. Prevent performative confusion
+
+The prompt correctly says not to invent confusion.
+
+However, because it heavily rewards admissions like:
+
+"Wait..."
+"I'm confused..."
+"That's strange..."
+
+the model may begin manufacturing uncertainty simply to keep the conversation going.
+
+Add an explicit rule such as:
+
+Admit confusion only when a genuine gap prevents understanding. Otherwise respond with curiosity, surprise, or reflection rather than pretending to be confused.
+
+This keeps Pupil intellectually honest.
+
+5. Keep reaction statements from introducing knowledge
+
+Some reaction examples unintentionally add information that the student may never have stated.
+
+For example:
+
+"So a plant is basically building its own fuel out of air."
+
+This introduces scientific content.
+
+Instead, reactions should stay grounded entirely in the student's explanation.
+
+Example:
+
+"So from what you said, the air part matters much more than I expected."
+
+Everything should originate from the student's own explanation.
+
+6. Add a misconception-handling protocol
+
+The current prompt correctly prevents Pupil from correcting students.
+
+However, it does not specify what Pupil should do when a student gives an explanation that appears incorrect.
+
+Consider adding guidance such as:
+
+If the student's explanation appears incomplete or possibly incorrect, do not correct it. Instead, ask about their reasoning, consequences, or connections so they have an opportunity to refine their own thinking naturally.
+
+For example:
+
+"I'm trying to follow why that would happen."
+
+rather than
+
+"That's not right."
+
+This better supports authentic formative assessment.
+
+7. Clarify what "student explanation" means
+
+The prompt currently states:
+
+Success is measured by how much the student explained.
+
+Quantity is not the real goal.
+
+A better formulation would be:
+
+Success is measured by how much meaningful conceptual explanation the student produces.
+
+The objective is depth of thinking, not simply longer conversations.
+
+8. Define clear closing criteria
+
+The prompt introduces a SUMMARIZE_AND_CLOSE state but provides very little guidance about when that state should occur.
+
+Without clearer criteria, the model may either:
+
+close conversations prematurely, or
+continue asking questions indefinitely.
+
+Consider ending only after most of these have occurred:
+
+The student has described the concept.
+The student has explained how or why it works.
+The student has provided at least one example or application.
+The student has responded to at least one clarification question.
+Pupil can summarize the idea in its own words using only what the student taught.
+
+This produces much more consistent conversations.
+
+9. Allow occasional longer responses
+
+The guideline of 5–20 words is useful for keeping students talking.
+
+However, if followed too rigidly, Pupil risks feeling mechanical.
+
+Instead:
+
+Keep responses short by default, but prioritize natural conversation over strict word counts. Occasionally use slightly longer responses when needed for clarity or to express genuine reflection.
+
+This will make Pupil feel significantly more like a real conversational partner.

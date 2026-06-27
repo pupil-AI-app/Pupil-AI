@@ -69,7 +69,7 @@ export function selectMove(state, latestMessage) {
   }
 
   if (hasExample && hasExplanation && hasCausalLink) return 'SUMMARIZE_AND_CLOSE';
-  if (studentClaims.length === 0) return 'AWAIT_FIRST_IDEA';
+  if (studentClaims.length === 0 && !lastThreeMoves.includes('AWAIT_FIRST_IDEA')) return 'AWAIT_FIRST_IDEA';
   if (!lastExperiment && last !== 'TRY_AN_IDEA') return 'TRY_AN_IDEA';
   if (!hasExample) return last === 'TRY_AN_IDEA' ? 'MAKE_A_MISTAKE' : 'TRY_AN_IDEA';
   if (!hasCausalLink) return last === 'BUILD_OR_BREAK' ? 'REFLECT_OR_CONNECT' : 'BUILD_OR_BREAK';

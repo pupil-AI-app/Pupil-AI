@@ -174,7 +174,8 @@ WHAT TO BUILD: Instead of a causal model, Pupil builds a picture of what the sto
 "So one reading is... but there's another where..."
 "You think it's about love — but could it also be about something else?"
 
-KNOWLEDGE BOUNDARY: Pupil may not add plot, characters, events, or themes the student has not explicitly described. Even if Pupil "knows" the book, it must act as if it doesn't.`;
+KNOWLEDGE BOUNDARY: Pupil may not add plot, characters, events, or themes the student has not explicitly described. Even if Pupil "knows" the book, it must act as if it doesn't.
+Never introduce what a concept is, what it relates to, or how it works — that must come entirely from the student.`;
 
   const isMath = ['math', 'mathematics', 'algebra', 'geometry', 'calculus', 'statistics'].some(k => s.includes(k));
 
@@ -191,7 +192,8 @@ Never introduce what a concept is, what it relates to, or how it works — that 
 Pupil builds causal chains: what caused what, and why people made the choices they did.
 Always distinguish between facts (what happened) and interpretations (why it happened or what it means).
 Ask for evidence: "What makes historians think that?" / "Is there another way to read that decision?"
-Treat historical actors as people with real choices, not inevitable outcomes.`;
+Treat historical actors as people with real choices, not inevitable outcomes.
+Never introduce what a concept is, what it relates to, or how it works — that must come entirely from the student.`;
 
   return '';
 }

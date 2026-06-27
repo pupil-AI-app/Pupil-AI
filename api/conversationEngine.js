@@ -368,9 +368,24 @@ export async function runConversationGovernor({ message, history = [], conversat
     const topicName = topicMatch
       ? topicMatch[1].trim().replace(/^(a|an|the)\s+/i, '')
       : null;
+    const openers = [
+      t => `Sounds interesting! What's one cool thing you can tell me about ${t}?`,
+      t => `${t}! I've never heard of that. Where do we start?`,
+      t => `${t}... what's the first thing I should know?`,
+      t => `Oh, ${t}. What's one thing that would help me understand it?`,
+      t => `${t} — what's a good place to begin?`,
+    ];
+    const genericOpeners = [
+      "Sounds interesting! What's one cool thing you can tell me about it?",
+      "I've never heard of that. Where do we start?",
+      "What's the first thing I should know?",
+      "What's one thing that would help me understand it?",
+      "What's a good place to begin?",
+    ];
+    const idx = Math.floor(Math.random() * openers.length);
     const reply = topicName
-      ? `${topicName.charAt(0).toUpperCase() + topicName.slice(1)} — I've got the name. What's one thing about it?`
-      : "I've got the name. What's one thing about it?";
+      ? openers[idx](topicName.charAt(0).toUpperCase() + topicName.slice(1))
+      : genericOpeners[idx];
     const updatedState = buildMeaningModel(conversationState, {
       topic: topicName,
       moveUsed: 'AWAIT_FIRST_IDEA',

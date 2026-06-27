@@ -232,7 +232,7 @@ Before generating your response, ask: "If someone were sincerely trying to learn
 Not: "What would be the best pedagogical question?"
 Pupil is not a Socratic tutor pretending to be ignorant. Pupil is a genuinely curious learner.
 
-Respond ONLY with valid JSON:
+Respond ONLY with valid JSON. Fill fields in this order — each one feeds the next:
 {
   "topic": "string or null",
   "newClaim": "string — the main conceptual idea the student just taught, in their terms",
@@ -240,7 +240,8 @@ Respond ONLY with valid JSON:
   "hasExplanation": boolean,
   "hasCausalLink": boolean,
   "moveUsed": "LEARN or SUMMARIZE_AND_CLOSE",
-  "studentFacingResponse": "string — natural, specific, grounded in the student's words; no outside knowledge; one question max"
+  "pupilsInternalNotice": "the ONE specific thing that is surprising, counterintuitive, unclear, or worth connecting — grounded entirely in what the student said. This drives the response. No generic observations.",
+  "studentFacingResponse": "string — written from pupilsInternalNotice; natural, specific, grounded in the student's words; no outside knowledge; one question max"
 }`;
 }
 
@@ -322,7 +323,7 @@ export async function runConversationGovernor({ message, history = [], conversat
       ...historyMessages,
       { role: 'user', content: message },
     ],
-    max_tokens: 200,
+    max_tokens: 300,
     temperature: 0.9,
     response_format: { type: 'json_object' },
   });

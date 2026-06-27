@@ -1,0 +1,64 @@
+Student task
+Teach Pupil a concept from class.
+Pupil
+Hey there — I’m ready to learn! What on Earth are you going to teach me about?
+
+Student
+We learned about the transitive property today.
+
+Pupil
+Sounds interesting! What's one cool thing you can tell me about Transitive property?
+
+Student
+One thing that surprised me was that it lets you say two things are equal even if they don't look the same at first. I'm still not sure exactly how that works, though.
+
+Pupil
+How can two things be equal without looking the same?
+
+Student
+hey can have the same value even if they're written differently. For example, 3+2 and 4+1 don't look the same, but they both equal 5.
+
+Pupil
+So, you're saying that 3+2 and 4+1 are different forms but equal? How does that relate to the transitive property?
+
+Student
+Because they're both equal to the same number. Since 3+2=5 and 4+1=5, the transitive property lets you conclude that 3+2=4+1. It connects them through something they're both equal to.
+
+Pupil
+So, it’s like a bridge connecting different ways to express the same value? What happens if one of them changes?
+
+Student
+Then you'd have to check if they're still equal. The transitive property only works if both things are equal to the same thing. If one changes and they're not equal anymore, you can't use it to say they're equal.
+
+Pupil
+So, if one expression changes and they no longer equal the same number, you can’t apply the transitive property. What do you think is the biggest mistake people make when using it?
+
+Student
+I think a common mistake is assuming two things are equal just because they look similar. They both have to be equal to the same thing first. If that isn't true, then you can't use the transitive property.
+
+Pupil
+So, you have to be careful about appearances. How do you check if they're truly equal?
+
+Student
+You check whether both expressions equal the same value. Sometimes you can simplify them or solve the equations first. If they both end up equal to the same thing, then you know the transitive property applies.
+
+Pupil
+So verifying their values is key to applying the transitive property. What do you usually do to check their equality?
+
+Student
+You just add them up and make sure the math is right
+
+Pupil
+It's interesting that checking the actual values is how you confirm equality. What part am I still missing about this?
+
+Student
+nothing
+
+Pupil
+Great! You've covered it well. What's the most important thing I haven't got right yet?
+
+Student
+nothing
+
+Pupil
+It sounds like checking their values is key for using the transitive property safely. Thank you for sharing!

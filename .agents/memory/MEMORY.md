@@ -1,0 +1,1 @@
+- [Prompt stability rule](prompt-stability.md) — user wants prompt preserved as-is; only targeted minimal edits going forward

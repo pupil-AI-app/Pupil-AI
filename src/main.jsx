@@ -6,7 +6,7 @@ import './styles.css';
 const starterMessages = [
   {
     role: 'pupil',
-    text: "Oh! I’m ready. What Earth idea are you teaching me today?"
+    text: "Hey there — I’m ready to learn! What on Earth are you going to teach me about?"
   }
 ];
 

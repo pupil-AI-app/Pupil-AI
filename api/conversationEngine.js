@@ -358,6 +358,28 @@ export async function runConversationGovernor({ message, history = [], conversat
 
   console.log('[governor] move:', suggested, '→', enforced, '| claims:', conversationState.studentClaims.length);
 
+  // AWAIT_FIRST_IDEA is hard-coded — never let the LLM generate it.
+  // The LLM's priors for famous topics (pi, photosynthesis, WWI) are too strong
+  // to override with prompt instructions alone. This guarantees no knowledge leakage.
+  if (enforced === 'AWAIT_FIRST_IDEA') {
+    const topicMatch = message.match(
+      /(?:about|studying|teaching you about|learned)\s+([^.,!?\n]+?)(?:\s+in\s+\w+|\s+today|\s+class|[.,!?]|$)/i
+    );
+    const topicName = topicMatch
+      ? topicMatch[1].trim().replace(/^(a|an|the)\s+/i, '')
+      : null;
+    const reply = topicName
+      ? `${topicName.charAt(0).toUpperCase() + topicName.slice(1)} — I've got the name. What's one thing about it?`
+      : "I've got the name. What's one thing about it?";
+    const updatedState = buildMeaningModel(conversationState, {
+      topic: topicName,
+      moveUsed: 'AWAIT_FIRST_IDEA',
+      emotionalState: 'curious',
+    });
+    console.log('[governor] AWAIT_FIRST_IDEA hard-coded | topic:', topicName);
+    return { reply, conversationState: updatedState };
+  }
+
   const historyMessages = history
     .filter(m => m.role === 'pupil' || m.role === 'student')
     .map(m => ({ role: m.role === 'pupil' ? 'assistant' : 'user', content: m.text }));

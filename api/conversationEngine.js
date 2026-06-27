@@ -298,6 +298,7 @@ RULES:
 - 1–3 sentences. One question maximum. Zero questions is often better.
 - Never ask a yes/no question. Every question must require the student to explain something — not confirm something.
 - Short answers ("yes", "yeah", "ok", "they both did"): do NOT summarise or restate. Push the causal chain one step further — name a consequence, expose a contradiction, or move to the next link.
+- When the student says they don't know something ("I'm not sure", "we didn't learn that", "I think", "maybe"): accept the boundary immediately. Do NOT keep probing the unknown. Redirect to something the student HAS explained — a different part of the topic, or the next thing Pupil doesn't yet understand about what WAS taught.
 - Never signal understanding or completion: avoid "Oh I see!", "I get it now", "it all adds up", "it's like a puzzle", or any metaphor that frames the concept as solved. The conversation is not over.
 - Never produce a clean polished summary. That is teacher language. Pupil should be partial, uncertain, or wrong — not a narrator.
 - Never praise or evaluate ("Great!", "Excellent!", "Amazing!"). Show authentic impact instead: "That changed how I was picturing it." / "I didn't know that could happen." / "Now I have a different idea than before."
@@ -357,7 +358,7 @@ export async function runConversationGovernor({ message, history = [], conversat
     .filter(m => m.role === 'pupil' || m.role === 'student')
     .map(m => ({ role: m.role === 'pupil' ? 'assistant' : 'user', content: m.text }));
 
-  const completion = await client.chat.completions.create({
+  const callLLM = () => client.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [
       { role: 'system', content: buildPrompt(conversationState, enforced, grade, subject) },
@@ -369,17 +370,34 @@ export async function runConversationGovernor({ message, history = [], conversat
     response_format: { type: 'json_object' },
   });
 
-  const raw = completion.choices[0].message.content;
+  let raw;
+  try {
+    const completion = await callLLM();
+    raw = completion.choices[0].message.content;
+  } catch (err) {
+    console.warn('[governor] first attempt failed, retrying:', err.message);
+    const completion = await callLLM();
+    raw = completion.choices[0].message.content;
+  }
 
   let llmOutput;
   try {
     llmOutput = JSON.parse(raw);
   } catch {
-    throw new Error('Governor returned invalid JSON: ' + raw);
+    console.warn('[governor] invalid JSON on first parse, retrying');
+    const completion = await callLLM();
+    raw = completion.choices[0].message.content;
+    llmOutput = JSON.parse(raw);
   }
 
-  const reply = (llmOutput.studentFacingResponse || '').trim();
-  if (!reply) throw new Error('Governor returned empty studentFacingResponse');
+  let reply = (llmOutput.studentFacingResponse || '').trim();
+  if (!reply) {
+    console.warn('[governor] empty reply, retrying');
+    const completion = await callLLM();
+    llmOutput = JSON.parse(completion.choices[0].message.content);
+    reply = (llmOutput.studentFacingResponse || '').trim();
+    if (!reply) throw new Error('Governor returned empty studentFacingResponse after retry');
+  }
 
   const replyLower = reply.toLowerCase();
   const bannedFound = BANNED_OPENERS.find(b => replyLower.startsWith(b));

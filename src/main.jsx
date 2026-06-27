@@ -112,7 +112,7 @@ function SubjectSelect({ grade, onConfirm }) {
   );
 }
 
-function Chat({ grade, onFinish }) {
+function Chat({ grade, subject, topic, onFinish }) {
   const [messages, setMessages] = useState(starterMessages);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);

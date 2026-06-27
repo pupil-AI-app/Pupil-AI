@@ -362,11 +362,11 @@ export async function runConversationGovernor({ message, history = [], conversat
   // The LLM's priors for famous topics (pi, photosynthesis, WWI) are too strong
   // to override with prompt instructions alone. This guarantees no knowledge leakage.
   if (enforced === 'AWAIT_FIRST_IDEA') {
-    const topicMatch = message.match(
-      /(?:about|studying|teaching you about|learned)\s+([^.,!?\n]+?)(?:\s+in\s+\w+|\s+today|\s+class|[.,!?]|$)/i
-    );
+    const topicMatch =
+      message.match(/\babout\s+(?:a\s+|an\s+|the\s+)?([^.,!?\n]+?)(?:\s+in\s+\w+|\s+today|\s+class|[.,!?]|$)/i) ||
+      message.match(/\bstudying\s+(?:a\s+|an\s+|the\s+)?([^.,!?\n]+?)(?:\s+in\s+\w+|\s+today|\s+class|[.,!?]|$)/i);
     const topicName = topicMatch
-      ? topicMatch[1].trim().replace(/^(a|an|the)\s+/i, '')
+      ? topicMatch[1].trim()
       : null;
     const withTopic = topicName ? [
       t => `Sounds interesting! What's one cool thing you can tell me about ${t}?`,

@@ -124,7 +124,7 @@ function GradeSelect({ onConfirm }) {
         <img src="/planets.png" alt="" className="planets-img" />
       </div>
       <div className="landing-center">
-        <img src="/ufo-raw.png" alt="Pupil's ship" className="ufo-img" />
+        <img src="/ufo-raw.png" alt="Pupil's ship" className="ufo-img" style={{ width: 200, transform: 'rotate(-12deg)' }} />
         <p className="landing-tagline">What grade are you in?</p>
         <div className="grade-row">
           <select
@@ -163,7 +163,7 @@ function SubjectSelect({ grade, onConfirm }) {
         <img src="/planets.png" alt="" className="planets-img" />
       </div>
       <div className="landing-center">
-        <img src="/ufo-raw.png" alt="Pupil's ship" className="ufo-img" />
+        <img src="/ufo-raw.png" alt="Pupil's ship" className="ufo-img" style={{ width: 222, transform: 'rotate(12deg)' }} />
         <p className="landing-tagline">What are we exploring?</p>
         <div className="subject-stack">
           <select

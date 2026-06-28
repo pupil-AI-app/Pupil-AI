@@ -249,6 +249,64 @@ h1 { font-size: clamp(42px, 7vw, 82px); line-height: 0.92; letter-spacing: -0.07
 .antennae span { width: 3px; height: 18px; background: var(--navy); border-radius: 5px; display: block; }
 .antennae span:nth-child(2) { height: 24px; }
 
+/* ── Chat screen overrides ───────────────────────────────────── */
+.chat-screen {
+  justify-content: flex-start;
+  overflow-y: auto;
+}
+
+/* ── Chat two-panel layout ──────────────────────────────────── */
+.chat-layout {
+  display: flex;
+  gap: 12px;
+  width: min(1100px, calc(100vw - 48px));
+  height: calc(100vh - 120px);
+  margin-top: 84px;
+  z-index: 1;
+}
+
+.pupil-panel {
+  flex: 0 0 300px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.pupil-panel-label {
+  color: white;
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.chat-panel-right {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-panel-right .messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 12px;
+  min-height: 0;
+}
+
+.chat-panel-right .composer {
+  flex-shrink: 0;
+  margin-top: 12px;
+}
+
 .app-shell, .report-shell { max-width: 1100px; margin: 0 auto; }
 .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
 .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 22px; }
@@ -267,8 +325,9 @@ h1 { font-size: clamp(42px, 7vw, 82px); line-height: 0.92; letter-spacing: -0.07
 .message.student { align-self: flex-end; background: var(--navy); color: var(--chalk); }
 .message-label { font-size: 12px; opacity: .65; font-weight: 800; margin-bottom: 6px; }
 .message p { margin: 0; line-height: 1.45; }
-.composer { display: flex; gap: 10px; background: white; border: 1px solid var(--line); border-radius: 24px; padding: 10px; }
-.composer input { flex: 1; border: 0; outline: 0; padding: 10px 12px; background: transparent; }
+.composer { display: flex; gap: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 24px; padding: 10px; align-items: center; }
+.composer input { flex: 1; border: 0; outline: 0; padding: 10px 12px; background: transparent; color: white; }
+.composer input::placeholder { color: rgba(255,255,255,0.45); }
 .send { border: 0; width: 44px; height: 44px; border-radius: 50%; background: var(--navy); color: var(--chalk); display: grid; place-items: center; }
 .send:disabled { opacity: 0.4; cursor: not-allowed; }
 .composer input:disabled { opacity: 0.6; }

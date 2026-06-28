@@ -233,7 +233,7 @@ function Chat({ grade, subject, topic, onFinish }) {
   }
 
   return (
-    <main className="landing-screen">
+    <main className="landing-screen chat-screen">
       <div className="space-art-wrap">
         <img src="/planets.png" alt="" className="planets-img" />
       </div>
@@ -242,34 +242,37 @@ function Chat({ grade, subject, topic, onFinish }) {
         <span className="landing-brand">Pupil-AI</span>
       </nav>
 
-      <section className="chat-panel">
-        <div className="assignment-card">
-          <span>Student task</span>
-          <strong>Teach Pupil a concept from class.</strong>
-        </div>
+      <div className="chat-layout">
+        {/* Left: Pupil avatar panel */}
+        <aside className="pupil-panel">
+          <div className="pupil-panel-label">Pupil ✨</div>
+        </aside>
 
-        <div className="messages">
-          {messages.map((m, index) => (
-            <div key={index} className={`message ${m.role}`}>
-              <div className="message-label">{m.role === 'pupil' ? 'Pupil' : 'Student'}</div>
-              <p>{m.text}</p>
-            </div>
-          ))}
-        </div>
+        {/* Right: chat panel */}
+        <section className="chat-panel-right">
+          <div className="messages">
+            {messages.map((m, index) => (
+              <div key={index} className={`message ${m.role}`}>
+                <div className="message-label">{m.role === 'pupil' ? 'Pupil' : 'Student'}</div>
+                <p>{m.text}</p>
+              </div>
+            ))}
+          </div>
 
-        <div className="composer">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-            placeholder={loading ? 'Pupil is thinking…' : 'Teach Pupil something...'}
-            disabled={loading}
-          />
-          <button className="send" onClick={sendMessage} aria-label="Send" disabled={loading}>
-            <Send size={18} />
-          </button>
-        </div>
-      </section>
+          <div className="composer">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+              placeholder={loading ? 'Pupil is thinking…' : 'Type your message...'}
+              disabled={loading}
+            />
+            <button className="send" onClick={sendMessage} aria-label="Send" disabled={loading}>
+              <img src="/triskelion.png" alt="" style={{ width: 36, height: 36, borderRadius: '50%', display: 'block' }} />
+            </button>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }

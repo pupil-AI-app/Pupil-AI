@@ -240,7 +240,7 @@ function Chat({ grade, subject, topic, onFinish }) {
       if (data.understandingPct !== undefined) setUnderstandingPct(data.understandingPct);
       setMessages([...next, { role: 'pupil', text: reply }]);
       if (data.conversationState?.lastThreeMoves?.includes('CLOSE_GRACEFULLY')) {
-        setTimeout(() => setConversationComplete(true), 1200);
+        setTimeout(() => setConversationComplete(true), 4000);
       }
     } catch {
       setMessages([...next, { role: 'pupil', text: "I'm having trouble hearing that. Can you try again?" }]);

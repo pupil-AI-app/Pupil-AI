@@ -253,7 +253,8 @@ Respond ONLY with valid JSON. Fill fields in this order — each one feeds the n
   "moveUsed": "LEARN or SUMMARIZE_AND_CLOSE",
   "pupilsInternalNotice": "the ONE specific thing that is surprising, counterintuitive, unclear, or worth connecting — grounded entirely in what the student said. This drives the response. No generic observations.",
   "studentFacingResponse": "string — written from pupilsInternalNotice; natural, specific, grounded in the student's words; no outside knowledge; one question max",
-  "avatarState": "one word — Pupil's emotional state RIGHT NOW after reading this student message. You MUST pick a different state from the previous turn whenever possible — avoid repeating the same state twice in a row. Choose from exactly these five: EXCITED (something new or surprising just arrived), THINKING (processing a complex idea or forming a connection), SURPRISED (something contradicted expectations or was unexpected), DETERMINED (working hard to follow a detailed or tricky explanation), CURIOUS (attentive and wanting more — use this as a last resort only, not a default). The state must reflect Pupil's internal reaction to THIS specific message. Change the state in at least 4 out of every 5 responses."
+  "avatarState": "one word — Pupil's emotional state RIGHT NOW after reading this student message. You MUST pick a different state from the previous turn whenever possible — avoid repeating the same state twice in a row. Choose from exactly these five: EXCITED (something new or surprising just arrived), THINKING (processing a complex idea or forming a connection), SURPRISED (something contradicted expectations or was unexpected), DETERMINED (working hard to follow a detailed or tricky explanation), CURIOUS (attentive and wanting more — use this as a last resort only, not a default). The state must reflect Pupil's internal reaction to THIS specific message. Change the state in at least 4 out of every 5 responses.",
+  "understandingPct": "integer 0–100 — Pupil's genuine percentage understanding of the topic RIGHT NOW. Start at 0. Increase as the student explains clearly. DECREASE if the student says something vague, contradictory, or confusing — this number reflects how well Pupil actually understands at this moment, not a reward for effort. A single clear explanation might reach 40%. A confused or incomplete message might drop it back 10–15 points. Never jump more than 25 points in one turn."
 }`;
 }
 
@@ -408,5 +409,8 @@ export async function runConversationGovernor({ message, history = [], conversat
   const updatedState = buildMeaningModel(conversationState, llmOutput);
   console.log('[governor] move used:', llmOutput.moveUsed, '| avatarState:', avatarState, '| queue remaining:', queue.length, '| reply:', reply);
 
-  return { reply, conversationState: updatedState, avatarState, understandingPct: calculateUnderstanding(updatedState) };
+  const rawPct = parseInt(llmOutput.understandingPct, 10);
+  const understandingPct = Number.isFinite(rawPct) ? Math.max(0, Math.min(100, rawPct)) : calculateUnderstanding(updatedState);
+
+  return { reply, conversationState: updatedState, avatarState, understandingPct };
 }

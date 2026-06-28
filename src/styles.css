@@ -71,6 +71,14 @@ body {
   margin: 0 auto;
 }
 
+.ufo-img {
+  width: 300px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  mix-blend-mode: screen;
+}
+
 .landing-logo {
   width: 140px;
   height: 140px;

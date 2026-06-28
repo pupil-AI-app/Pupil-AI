@@ -238,7 +238,8 @@ Respond ONLY with valid JSON. Fill fields in this order — each one feeds the n
   "hasCausalLink": boolean,
   "moveUsed": "LEARN or SUMMARIZE_AND_CLOSE",
   "pupilsInternalNotice": "the ONE specific thing that is surprising, counterintuitive, unclear, or worth connecting — grounded entirely in what the student said. This drives the response. No generic observations.",
-  "studentFacingResponse": "string — written from pupilsInternalNotice; natural, specific, grounded in the student's words; no outside knowledge; one question max"
+  "studentFacingResponse": "string — written from pupilsInternalNotice; natural, specific, grounded in the student's words; no outside knowledge; one question max",
+  "avatarState": "one word — Pupil's emotional state after processing this message. Choose the single best fit: CURIOUS (default, attentive), EXCITED (something genuinely surprising or delightful), CONFUSED (something unclear or seemingly contradictory), AWARE (a connection or realisation just clicked), ENGAGED (deep in the explanation, wanting more detail), WONDERING (reflective, sitting with a big idea)"
 }`;
 }
 
@@ -309,7 +310,7 @@ export async function runConversationGovernor({ message, history = [], conversat
       moveUsed: 'AWAIT_FIRST_IDEA',
     });
     console.log('[governor] AWAIT_FIRST_IDEA hard-coded | topic:', topicName);
-    return { reply, conversationState: updatedState };
+    return { reply, conversationState: updatedState, avatarState: 'CURIOUS' };
   }
 
   // CLOSE_GRACEFULLY is hard-coded — fires once after SUMMARIZE_AND_CLOSE.
@@ -325,7 +326,7 @@ export async function runConversationGovernor({ message, history = [], conversat
     const reply = closings[Math.floor(Math.random() * closings.length)];
     const updatedState = buildMeaningModel(conversationState, { moveUsed: 'CLOSE_GRACEFULLY' });
     console.log('[governor] CLOSE_GRACEFULLY hard-coded');
-    return { reply, conversationState: updatedState };
+    return { reply, conversationState: updatedState, avatarState: 'EXCITED' };
   }
 
   const historyMessages = history
@@ -374,7 +375,8 @@ export async function runConversationGovernor({ message, history = [], conversat
   }
 
   const updatedState = buildMeaningModel(conversationState, llmOutput);
-  console.log('[governor] move used:', llmOutput.moveUsed, '| reply:', reply);
+  const avatarState = llmOutput.avatarState || 'CURIOUS';
+  console.log('[governor] move used:', llmOutput.moveUsed, '| avatarState:', avatarState, '| reply:', reply);
 
-  return { reply, conversationState: updatedState };
+  return { reply, conversationState: updatedState, avatarState };
 }

@@ -202,6 +202,16 @@ function Chat({ grade, subject, topic, onFinish }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [conversationState, setConversationState] = useState(null);
+  const [avatarState, setAvatarState] = useState('CURIOUS');
+
+  const AVATAR_IMAGES = {
+    CURIOUS:  null,
+    EXCITED:  null,
+    CONFUSED: null,
+    AWARE:    null,
+    ENGAGED:  null,
+    WONDERING: null,
+  };
 
   async function sendMessage() {
     const text = input.trim();
@@ -224,6 +234,7 @@ function Chat({ grade, subject, topic, onFinish }) {
         ? data.reply.trim()
         : "I'm having trouble hearing that. Can you try again?";
       if (data.conversationState) setConversationState(data.conversationState);
+      if (data.avatarState) setAvatarState(data.avatarState);
       setMessages([...next, { role: 'pupil', text: reply }]);
     } catch {
       setMessages([...next, { role: 'pupil', text: "I'm having trouble hearing that. Can you try again?" }]);
@@ -243,6 +254,12 @@ function Chat({ grade, subject, topic, onFinish }) {
         {/* Left: Pupil avatar panel */}
         <aside className="pupil-panel">
           <div className="pupil-panel-label">Pupil ✨</div>
+          <div className="pupil-avatar-area">
+            {AVATAR_IMAGES[avatarState]
+              ? <img src={AVATAR_IMAGES[avatarState]} alt={avatarState} className="pupil-avatar-img" />
+              : <div className="pupil-avatar-placeholder">{avatarState}</div>
+            }
+          </div>
         </aside>
 
         {/* Right: chat panel */}

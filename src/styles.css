@@ -307,6 +307,32 @@ h1 { font-size: clamp(42px, 7vw, 82px); line-height: 0.92; letter-spacing: -0.07
   margin-top: 12px;
 }
 
+.pupil-avatar-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pupil-avatar-img {
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  display: block;
+  mix-blend-mode: screen;
+}
+
+.pupil-avatar-placeholder {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px dashed rgba(255,255,255,0.15);
+  border-radius: 12px;
+  padding: 20px 32px;
+}
+
 .app-shell, .report-shell { max-width: 1100px; margin: 0 auto; }
 .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
 .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 22px; }

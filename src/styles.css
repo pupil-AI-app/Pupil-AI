@@ -6,6 +6,7 @@
   --muted: #6d7480;
   --line: rgba(16, 31, 54, 0.13);
   --shadow: 0 28px 80px rgba(16, 31, 54, 0.16);
+  --space-bg: #0c1825;
 }
 
 * { box-sizing: border-box; }
@@ -15,6 +16,108 @@ body {
   background: #1a2e4f;
   color: var(--navy);
 }
+
+/* ── Landing screen ──────────────────────────────────────────── */
+.landing-screen {
+  min-height: 100vh;
+  background: var(--space-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 24px 32px;
+  display: flex;
+  align-items: center;
+}
+
+.landing-brand {
+  color: white;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.space-art-wrap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.space-art-svg {
+  display: block;
+}
+
+.landing-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 0 24px;
+  z-index: 1;
+}
+
+.ufo-svg {
+  display: block;
+  margin: 0 auto;
+}
+
+.landing-tagline {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 18px;
+  font-weight: 400;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.landing-composer {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  padding: 8px 8px 8px 24px;
+  width: min(480px, calc(100vw - 48px));
+  gap: 8px;
+}
+
+.landing-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: white;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.landing-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.landing-send {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: white;
+  border: none;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.landing-send:hover { opacity: 0.88; }
 button, input { font: inherit; }
 button { cursor: pointer; }
 

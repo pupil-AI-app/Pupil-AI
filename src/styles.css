@@ -105,46 +105,23 @@ body {
   letter-spacing: 0.01em;
 }
 
-.landing-composer {
-  display: flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+.landing-start-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 999px;
-  padding: 8px 8px 8px 24px;
-  width: min(480px, calc(100vw - 48px));
-  gap: 8px;
-}
-
-.landing-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
   color: white;
   font-size: 16px;
-  font-weight: 400;
-}
-
-.landing-input::placeholder {
-  color: rgba(255, 255, 255, 0.35);
-}
-
-.landing-send {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: none;
-  border: none;
-  padding: 0;
-  display: grid;
-  place-items: center;
+  font-weight: 500;
+  padding: 14px 36px;
   cursor: pointer;
-  flex-shrink: 0;
-  transition: opacity 0.15s;
+  transition: background 0.15s, border-color 0.15s;
+  letter-spacing: 0.02em;
 }
 
-.landing-send:hover { opacity: 0.8; }
+.landing-start-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
 button, input { font: inherit; }
 button { cursor: pointer; }
 

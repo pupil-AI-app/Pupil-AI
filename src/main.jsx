@@ -105,19 +105,9 @@ function Landing({ onStart }) {
       <div className="landing-center">
         <img src="/ufo-raw.png" alt="Pupil's ship" className="ufo-img" />
         <p className="landing-tagline">What can you teach me today?</p>
-        <div className="landing-composer">
-          <input
-            className="landing-input"
-            placeholder="Teach me..."
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-            autoFocus
-          />
-          <button className="landing-send" onClick={handleSubmit} aria-label="Start">
-            <img src="/triskelion.png" alt="" style={{ width: 42, height: 42, borderRadius: '50%', display: 'block' }} />
-          </button>
-        </div>
+        <button className="landing-start-btn" onClick={handleSubmit}>
+          Start a student chat
+        </button>
       </div>
     </main>
   );

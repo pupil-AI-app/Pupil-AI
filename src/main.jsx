@@ -265,6 +265,7 @@ function Chat({ grade, subject, topic, onFinish }) {
               <p className="completion-subtitle">I really learned something today!</p>
             </div>
             <button className="landing-start-btn completion-btn" onClick={onFinish}>Finish</button>
+            <button className="completion-teacher-btn">Send results to teacher</button>
           </div>
         </div>
       )}

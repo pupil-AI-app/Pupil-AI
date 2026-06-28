@@ -233,11 +233,14 @@ function Chat({ grade, subject, topic, onFinish }) {
   }
 
   return (
-    <main className="screen app-shell">
-      <header className="topbar">
-        <div className="brand"><PupilMark /><span>Pupil</span></div>
+    <main className="landing-screen">
+      <div className="space-art-wrap">
+        <img src="/planets.png" alt="" className="planets-img" />
+      </div>
+      <nav className="landing-nav" style={{ justifyContent: 'space-between' }}>
         <button className="ghost" onClick={onFinish}>Finish chat</button>
-      </header>
+        <span className="landing-brand">Pupil-AI</span>
+      </nav>
 
       <section className="chat-panel">
         <div className="assignment-card">

@@ -19,6 +19,7 @@ export function initialConversationState() {
     hasCausalLink: false,
     lastThreeMoves: [],
     lastAvatarState: null,
+    secondLastAvatarState: null,
   };
 }
 
@@ -74,7 +75,10 @@ export function buildMeaningModel(state, llmOutput) {
     if (next.lastThreeMoves.length > 4) next.lastThreeMoves.shift();
   }
 
-  if (llmOutput.avatarState) next.lastAvatarState = llmOutput.avatarState;
+  if (llmOutput.avatarState) {
+    next.secondLastAvatarState = next.lastAvatarState;
+    next.lastAvatarState = llmOutput.avatarState;
+  }
 
   return next;
 }
@@ -381,13 +385,12 @@ export async function runConversationGovernor({ message, history = [], conversat
   const rawState = (llmOutput.avatarState || '').toUpperCase().trim();
   let avatarState = VALID_LLM_STATES.includes(rawState) ? rawState : 'CURIOUS';
 
-  // Enforce variety: if the LLM repeated the last state or defaulted to CURIOUS,
-  // pick a different one from the non-CURIOUS options.
+  // Allow up to 2 consecutive same states, but block a 3rd in a row.
   const lastState = conversationState.lastAvatarState;
-  const nonCurious = VALID_LLM_STATES.filter(s => s !== 'CURIOUS');
-  const shouldSwitch = avatarState === lastState || (avatarState === 'CURIOUS' && lastState !== null);
-  if (shouldSwitch) {
-    const candidates = nonCurious.filter(s => s !== lastState);
+  const secondLastState = conversationState.secondLastAvatarState;
+  const wouldBeThirdInRow = avatarState === lastState && lastState === secondLastState;
+  if (wouldBeThirdInRow) {
+    const candidates = VALID_LLM_STATES.filter(s => s !== lastState);
     avatarState = candidates[Math.floor(Math.random() * candidates.length)];
   }
 

@@ -258,15 +258,15 @@ h1 { font-size: clamp(42px, 7vw, 82px); line-height: 0.92; letter-spacing: -0.07
 /* ── Chat two-panel layout ──────────────────────────────────── */
 .chat-layout {
   display: flex;
-  gap: 12px;
-  width: min(1100px, calc(100vw - 48px));
-  height: calc(100vh - 120px);
-  margin-top: 84px;
+  gap: 16px;
+  width: min(1060px, calc(100vw - 48px));
+  height: calc(100vh - 108px);
+  margin-top: 88px;
   z-index: 1;
 }
 
 .pupil-panel {
-  flex: 0 0 360px;
+  flex: 0 0 320px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;

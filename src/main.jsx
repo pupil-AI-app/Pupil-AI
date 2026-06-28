@@ -106,7 +106,7 @@ function Landing({ onStart }) {
         <img src="/ufo-raw.png" alt="Pupil's ship" className="ufo-img" />
         <p className="landing-tagline">What can you teach me today?</p>
         <button className="landing-start-btn" onClick={handleSubmit}>
-          Start a student chat
+          Start a chat
         </button>
       </div>
     </main>

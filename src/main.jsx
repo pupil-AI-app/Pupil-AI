@@ -255,10 +255,8 @@ function Chat({ grade, subject, topic, onFinish }) {
         <aside className="pupil-panel">
           <div className="pupil-panel-label">Pupil ✨</div>
           <div className="pupil-avatar-area">
-            {AVATAR_IMAGES[avatarState]
-              ? <img src={AVATAR_IMAGES[avatarState]} alt={avatarState} className="pupil-avatar-img" />
-              : <div className="pupil-avatar-placeholder">{avatarState}</div>
-            }
+            <img src={AVATAR_IMAGES[avatarState]} alt={avatarState} className="pupil-avatar-img" />
+            <div className="pupil-avatar-state-label">{avatarState}</div>
           </div>
         </aside>
 

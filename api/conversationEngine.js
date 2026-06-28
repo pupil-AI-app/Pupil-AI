@@ -48,11 +48,8 @@ export function selectMove(state) {
     return 'CLOSE_GRACEFULLY';
   }
 
-  // Completion: understanding reached 5/5, OR all quality signals met, OR 5+ distinct ideas.
-  const masteryComplete = (state.understandingLevel ?? 1) >= 5;
-  const qualityComplete = hasExample && hasExplanation && hasCausalLink;
-  const depthComplete = studentClaims.length >= 5;
-  if (masteryComplete || qualityComplete || depthComplete) {
+  // Completion: understanding reached 5/5.
+  if ((state.understandingLevel ?? 1) >= 5) {
     return 'SUMMARIZE_AND_CLOSE';
   }
 

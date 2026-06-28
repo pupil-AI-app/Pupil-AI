@@ -153,7 +153,7 @@ function GradeSelect({ onConfirm }) {
 function SubjectSelect({ grade, onConfirm }) {
   const [subject, setSubject] = useState('');
   const [topic, setTopic] = useState('');
-  const subjects = ['Math', 'English', 'Science', 'Social Studies', 'History', 'Geography', 'Art', 'Music', 'Physical Education', 'Other'];
+  const subjects = ['English', 'Math', 'Science', 'Social Studies', 'Other'];
   return (
     <main className="landing-screen">
       <nav className="landing-nav">

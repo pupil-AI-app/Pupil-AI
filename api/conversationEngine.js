@@ -262,7 +262,10 @@ export async function runConversationGovernor({ message, history = [], conversat
     const topicMatch =
       message.match(/\babout\s+(?:a\s+|an\s+|the\s+)?([^.,!?\n]+?)(?:\s+in\s+\w+|\s+today|\s+class|[.,!?]|$)/i) ||
       message.match(/\bstudying\s+(?:a\s+|an\s+|the\s+)?([^.,!?\n]+?)(?:\s+in\s+\w+|\s+today|\s+class|[.,!?]|$)/i);
-    const topicName = topicMatch ? topicMatch[1].trim() : null;
+    const rawTopic = topicMatch ? topicMatch[1].trim() : null;
+    const topicName = rawTopic
+      ? rawTopic.replace(/^(was|were|is|are|be|been|a|an|the)\s+/i, '').trim()
+      : null;
 
     const withTopic = topicName ? [
       t => `Sounds interesting! What's one cool thing you can tell me about ${t}?`,
@@ -270,7 +273,7 @@ export async function runConversationGovernor({ message, history = [], conversat
       t => `${t}... what even is that? Start me off!`,
       t => `Oh, ${t}. What's one thing that would help me understand it?`,
       t => `${t}! What's the best place to begin?`,
-      t => `I love a new word! What can you tell me about ${t}?`,
+      t => `${t}! I've never come across that. What can you tell me?`,
       t => `${t}? Tell me everything — well, one thing at a time!`,
       t => `Never heard of ${t} before. What does it actually mean?`,
       t => `${t}! Where do we start?`,

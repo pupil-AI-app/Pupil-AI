@@ -34,9 +34,10 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  padding: 28px 32px 28px 290px;
+  padding: 28px 32px;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
 }
 
 .landing-brand {

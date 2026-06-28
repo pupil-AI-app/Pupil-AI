@@ -115,7 +115,7 @@ function Landing({ onStart }) {
             autoFocus
           />
           <button className="landing-send" onClick={handleSubmit} aria-label="Start">
-            <TriskelionIcon />
+            <img src="/triskelion.png" alt="" style={{ width: 42, height: 42, borderRadius: '50%', display: 'block' }} />
           </button>
         </div>
       </div>

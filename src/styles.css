@@ -48,9 +48,10 @@ body {
 
 .space-art-wrap {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: -20px;
+  left: -30px;
   pointer-events: none;
+  overflow: visible;
 }
 
 .space-art-svg {
@@ -79,7 +80,7 @@ body {
 }
 
 .ufo-img {
-  width: 300px;
+  width: 180px;
   height: auto;
   display: block;
   margin: 0 auto;

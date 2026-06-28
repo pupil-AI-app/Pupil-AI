@@ -10,6 +10,17 @@ const MOVES = [
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 
+const AVATAR_STATES = ['CURIOUS', 'DETERMINED', 'EXCITED', 'SURPRISED', 'THINKING'];
+
+function shuffledStates() {
+  const arr = [...AVATAR_STATES];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export function initialConversationState() {
   return {
     topic: null,
@@ -18,8 +29,7 @@ export function initialConversationState() {
     hasExplanation: false,
     hasCausalLink: false,
     lastThreeMoves: [],
-    lastAvatarState: null,
-    secondLastAvatarState: null,
+    avatarQueue: [],
   };
 }
 
@@ -75,10 +85,7 @@ export function buildMeaningModel(state, llmOutput) {
     if (next.lastThreeMoves.length > 4) next.lastThreeMoves.shift();
   }
 
-  if (llmOutput.avatarState) {
-    next.secondLastAvatarState = next.lastAvatarState;
-    next.lastAvatarState = llmOutput.avatarState;
-  }
+  if (llmOutput.avatarQueue !== undefined) next.avatarQueue = llmOutput.avatarQueue;
 
   return next;
 }
@@ -381,22 +388,15 @@ export async function runConversationGovernor({ message, history = [], conversat
     if (!reply) throw new Error('Governor returned empty studentFacingResponse after retry');
   }
 
-  const VALID_LLM_STATES = ['CURIOUS', 'DETERMINED', 'EXCITED', 'SURPRISED', 'THINKING'];
-  const rawState = (llmOutput.avatarState || '').toUpperCase().trim();
-  let avatarState = VALID_LLM_STATES.includes(rawState) ? rawState : 'CURIOUS';
+  // Pop the next state from the shuffled deck; refill when empty.
+  const queue = conversationState.avatarQueue && conversationState.avatarQueue.length > 0
+    ? [...conversationState.avatarQueue]
+    : shuffledStates();
+  const avatarState = queue.shift();
 
-  // Allow up to 2 consecutive same states, but block a 3rd in a row.
-  const lastState = conversationState.lastAvatarState;
-  const secondLastState = conversationState.secondLastAvatarState;
-  const wouldBeThirdInRow = avatarState === lastState && lastState === secondLastState;
-  if (wouldBeThirdInRow) {
-    const candidates = VALID_LLM_STATES.filter(s => s !== lastState);
-    avatarState = candidates[Math.floor(Math.random() * candidates.length)];
-  }
-
-  llmOutput.avatarState = avatarState;
+  llmOutput.avatarQueue = queue;
   const updatedState = buildMeaningModel(conversationState, llmOutput);
-  console.log('[governor] move used:', llmOutput.moveUsed, '| avatarState:', avatarState, '(was:', lastState, ') | reply:', reply);
+  console.log('[governor] move used:', llmOutput.moveUsed, '| avatarState:', avatarState, '| queue remaining:', queue.length, '| reply:', reply);
 
   return { reply, conversationState: updatedState, avatarState };
 }

@@ -234,9 +234,6 @@ function Chat({ grade, subject, topic, onFinish }) {
 
   return (
     <main className="landing-screen chat-screen">
-      <div className="space-art-wrap">
-        <img src="/planets.png" alt="" className="planets-img" />
-      </div>
       <nav className="landing-nav" style={{ justifyContent: 'space-between' }}>
         <button className="ghost" onClick={onFinish}>Finish chat</button>
         <span className="landing-brand">Pupil-AI</span>

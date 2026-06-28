@@ -18,6 +18,7 @@ export function initialConversationState() {
     hasExplanation: false,
     hasCausalLink: false,
     lastThreeMoves: [],
+    lastAvatarState: null,
   };
 }
 
@@ -72,6 +73,8 @@ export function buildMeaningModel(state, llmOutput) {
     next.lastThreeMoves.push(llmOutput.moveUsed);
     if (next.lastThreeMoves.length > 4) next.lastThreeMoves.shift();
   }
+
+  if (llmOutput.avatarState) next.lastAvatarState = llmOutput.avatarState;
 
   return next;
 }
@@ -374,11 +377,23 @@ export async function runConversationGovernor({ message, history = [], conversat
     if (!reply) throw new Error('Governor returned empty studentFacingResponse after retry');
   }
 
-  const updatedState = buildMeaningModel(conversationState, llmOutput);
   const VALID_LLM_STATES = ['CURIOUS', 'DETERMINED', 'EXCITED', 'SURPRISED', 'THINKING'];
   const rawState = (llmOutput.avatarState || '').toUpperCase().trim();
-  const avatarState = VALID_LLM_STATES.includes(rawState) ? rawState : 'CURIOUS';
-  console.log('[governor] move used:', llmOutput.moveUsed, '| avatarState:', avatarState, '| reply:', reply);
+  let avatarState = VALID_LLM_STATES.includes(rawState) ? rawState : 'CURIOUS';
+
+  // Enforce variety: if the LLM repeated the last state or defaulted to CURIOUS,
+  // pick a different one from the non-CURIOUS options.
+  const lastState = conversationState.lastAvatarState;
+  const nonCurious = VALID_LLM_STATES.filter(s => s !== 'CURIOUS');
+  const shouldSwitch = avatarState === lastState || (avatarState === 'CURIOUS' && lastState !== null);
+  if (shouldSwitch) {
+    const candidates = nonCurious.filter(s => s !== lastState);
+    avatarState = candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  llmOutput.avatarState = avatarState;
+  const updatedState = buildMeaningModel(conversationState, llmOutput);
+  console.log('[governor] move used:', llmOutput.moveUsed, '| avatarState:', avatarState, '(was:', lastState, ') | reply:', reply);
 
   return { reply, conversationState: updatedState, avatarState };
 }

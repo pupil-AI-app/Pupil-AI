@@ -155,14 +155,19 @@ function SubjectSelect({ grade, onConfirm }) {
   const [topic, setTopic] = useState('');
   const subjects = ['Math', 'English', 'Science', 'Social Studies', 'History', 'Geography', 'Art', 'Music', 'Physical Education', 'Other'];
   return (
-    <main className="screen landing">
-      <section className="hero-card">
-        <div className="logo-name">Pupil-AI</div>
-        <h1 style={{ fontSize: 'clamp(28px, 4vw, 48px)', marginBottom: 8 }}>What are you studying?</h1>
-        <p className="lede" style={{ marginBottom: 28 }}>Grade {grade} · Tell Pupil what you want to teach.</p>
-        <div className="subject-row">
+    <main className="landing-screen">
+      <nav className="landing-nav">
+        <span className="landing-brand">Pupil-AI</span>
+      </nav>
+      <div className="space-art-wrap">
+        <img src="/planets.png" alt="" className="planets-img" />
+      </div>
+      <div className="landing-center">
+        <img src="/ufo-raw.png" alt="Pupil's ship" className="ufo-img" />
+        <p className="landing-tagline">What are you studying?</p>
+        <div className="subject-stack">
           <select
-            className="grade-select"
+            className="landing-grade-select"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
           >
@@ -172,24 +177,22 @@ function SubjectSelect({ grade, onConfirm }) {
             ))}
           </select>
           <input
-            className="topic-input"
+            className="landing-topic-input"
             type="text"
             placeholder="Topic (e.g. photosynthesis)"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && subject && topic.trim() && onConfirm(subject, topic.trim())}
           />
-        </div>
-        <div style={{ marginTop: 18 }}>
           <button
-            className="primary"
+            className="landing-start-btn"
             disabled={!subject || !topic.trim()}
             onClick={() => onConfirm(subject, topic.trim())}
           >
             Start chatting →
           </button>
         </div>
-      </section>
+      </div>
     </main>
   );
 }

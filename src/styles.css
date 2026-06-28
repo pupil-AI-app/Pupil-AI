@@ -289,6 +289,7 @@ h1 { font-size: clamp(42px, 7vw, 82px); line-height: 0.92; letter-spacing: -0.07
 }
 
 .completion-card {
+  position: relative;
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 28px;
@@ -300,6 +301,24 @@ h1 { font-size: clamp(42px, 7vw, 82px); line-height: 0.92; letter-spacing: -0.07
   max-width: 420px;
   width: 90vw;
   animation: cardPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.completion-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 6px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.completion-close:hover {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .completion-avatar {

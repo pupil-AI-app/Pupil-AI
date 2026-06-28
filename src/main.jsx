@@ -259,6 +259,7 @@ function Chat({ grade, subject, topic, onFinish }) {
       {conversationComplete && (
         <div className="completion-overlay">
           <div className="completion-card">
+            <button className="completion-close" onClick={onFinish} aria-label="Close">✕</button>
             <img src="/PUPIL_CELEBRATING.png" alt="Pupil celebrating" className="completion-avatar" />
             <div className="completion-text">
               <h2 className="completion-title">Great job!</h2>

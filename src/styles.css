@@ -118,6 +118,8 @@ body {
   outline: none;
   appearance: none;
   -webkit-appearance: none;
+  width: 100%;
+  text-align: center;
 }
 
 .landing-grade-select option {
@@ -131,6 +133,10 @@ body {
   align-items: center;
   gap: 12px;
   width: min(360px, calc(100vw - 48px));
+}
+
+.subject-stack .landing-start-btn {
+  width: 100%;
 }
 
 .landing-topic-input {

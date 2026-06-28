@@ -74,10 +74,13 @@ function SpaceArt() {
   );
 }
 
-function SpiralIcon() {
+function TriskelionIcon() {
+  const blade = "M 0 0 C 1 -1.5, 3.5 -2, 5 -4.5 C 6.5 -7, 5 -10, 2.5 -10 C 0 -10, -1.5 -8, -1 -5.5 C -0.5 -3, 0 -1, 0 0 Z";
   return (
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M11 11 C11 11, 13 9, 13 7 C13 5.3 11.7 4 10 4 C8.3 4 7 5.3 7 7 C7 9.8 9 11.5 11 12 C13.5 12.7 16 11 16 8 C16 4.7 13.3 2 10 2 C6.7 2 4 4.7 4 8 C4 12.4 7.6 16 12 16 C16.4 16 20 12.4 20 8" stroke="#0c1825" strokeWidth="2" strokeLinecap="round"/>
+    <svg width="26" height="26" viewBox="-13 -13 26 26" xmlns="http://www.w3.org/2000/svg">
+      <path d={blade} fill="#111" />
+      <path d={blade} fill="#111" transform="rotate(120)" />
+      <path d={blade} fill="#111" transform="rotate(240)" />
     </svg>
   );
 }
@@ -112,7 +115,7 @@ function Landing({ onStart }) {
             autoFocus
           />
           <button className="landing-send" onClick={handleSubmit} aria-label="Start">
-            <SpiralIcon />
+            <TriskelionIcon />
           </button>
         </div>
       </div>

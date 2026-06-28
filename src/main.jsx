@@ -99,7 +99,7 @@ function Landing({ onStart }) {
       </nav>
 
       <div className="space-art-wrap">
-        <SpaceArt />
+        <img src="/planets.png" alt="" className="planets-img" />
       </div>
 
       <div className="landing-center">

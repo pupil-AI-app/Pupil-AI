@@ -57,6 +57,13 @@ body {
   display: block;
 }
 
+.planets-img {
+  width: 420px;
+  height: auto;
+  display: block;
+  mix-blend-mode: screen;
+}
+
 .landing-center {
   display: flex;
   flex-direction: column;

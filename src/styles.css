@@ -265,8 +265,58 @@ h1 { font-size: clamp(42px, 7vw, 82px); line-height: 0.92; letter-spacing: -0.07
   z-index: 1;
 }
 
-.pupil-panel {
+/* ── Left column (meter + avatar) ────────────────────────────── */
+.left-col {
   flex: 0 0 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Understanding meter ─────────────────────────────────────── */
+.understanding-panel {
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.understanding-label {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.understanding-pct {
+  color: white;
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  font-family: 'Comfortaa', sans-serif;
+}
+
+.understanding-track {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.understanding-fill {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 99px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pupil-panel {
+  flex: 1;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;

@@ -203,6 +203,7 @@ function Chat({ grade, subject, topic, onFinish }) {
   const [loading, setLoading] = useState(false);
   const [conversationState, setConversationState] = useState(null);
   const [avatarState, setAvatarState] = useState('CURIOUS');
+  const [understandingPct, setUnderstandingPct] = useState(0);
 
   const AVATAR_IMAGES = {
     CURIOUS:     '/PUPIL_CURIOUS.png',
@@ -235,6 +236,7 @@ function Chat({ grade, subject, topic, onFinish }) {
         : "I'm having trouble hearing that. Can you try again?";
       if (data.conversationState) setConversationState(data.conversationState);
       if (data.avatarState) setAvatarState(data.avatarState);
+      if (data.understandingPct !== undefined) setUnderstandingPct(data.understandingPct);
       setMessages([...next, { role: 'pupil', text: reply }]);
     } catch {
       setMessages([...next, { role: 'pupil', text: "I'm having trouble hearing that. Can you try again?" }]);
@@ -251,13 +253,22 @@ function Chat({ grade, subject, topic, onFinish }) {
       </nav>
 
       <div className="chat-layout">
-        {/* Left: Pupil avatar panel */}
-        <aside className="pupil-panel">
-          <div className="pupil-panel-label">Pupil ✨</div>
-          <div className="pupil-avatar-area">
-            <img key={avatarState} src={AVATAR_IMAGES[avatarState]} alt={avatarState} className="pupil-avatar-img" />
+        {/* Left column: meter + avatar */}
+        <div className="left-col">
+          <div className="understanding-panel">
+            <div className="understanding-label">Pupil's Understanding</div>
+            <div className="understanding-pct">{understandingPct}%</div>
+            <div className="understanding-track">
+              <div className="understanding-fill" style={{ width: `${understandingPct}%` }} />
+            </div>
           </div>
-        </aside>
+          <aside className="pupil-panel">
+            <div className="pupil-panel-label">Pupil ✨</div>
+            <div className="pupil-avatar-area">
+              <img key={avatarState} src={AVATAR_IMAGES[avatarState]} alt={avatarState} className="pupil-avatar-img" />
+            </div>
+          </aside>
+        </div>
 
         {/* Right: chat panel */}
         <section className="chat-panel-right">

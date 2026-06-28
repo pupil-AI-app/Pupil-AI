@@ -257,6 +257,16 @@ Respond ONLY with valid JSON. Fill fields in this order — each one feeds the n
 }`;
 }
 
+// ─── Understanding score ──────────────────────────────────────────────────────
+
+function calculateUnderstanding(state) {
+  const claimScore = Math.min(state.studentClaims.length, 5) * 10; // 10% per claim, max 50%
+  const exampleScore = state.hasExample ? 20 : 0;
+  const explanationScore = state.hasExplanation ? 20 : 0;
+  const causalScore = state.hasCausalLink ? 10 : 0;
+  return Math.min(claimScore + exampleScore + explanationScore + causalScore, 100);
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export async function runConversationGovernor({ message, history = [], conversationState, grade = null, subject = null }) {
@@ -324,7 +334,7 @@ export async function runConversationGovernor({ message, history = [], conversat
       moveUsed: 'AWAIT_FIRST_IDEA',
     });
     console.log('[governor] AWAIT_FIRST_IDEA hard-coded | topic:', topicName);
-    return { reply, conversationState: updatedState, avatarState: 'EXCITED' };
+    return { reply, conversationState: updatedState, avatarState: 'EXCITED', understandingPct: 0 };
   }
 
   // CLOSE_GRACEFULLY is hard-coded — fires once after SUMMARIZE_AND_CLOSE.
@@ -340,7 +350,7 @@ export async function runConversationGovernor({ message, history = [], conversat
     const reply = closings[Math.floor(Math.random() * closings.length)];
     const updatedState = buildMeaningModel(conversationState, { moveUsed: 'CLOSE_GRACEFULLY' });
     console.log('[governor] CLOSE_GRACEFULLY hard-coded');
-    return { reply, conversationState: updatedState, avatarState: 'CELEBRATING' };
+    return { reply, conversationState: updatedState, avatarState: 'CELEBRATING', understandingPct: calculateUnderstanding(updatedState) };
   }
 
   const historyMessages = history
@@ -398,5 +408,5 @@ export async function runConversationGovernor({ message, history = [], conversat
   const updatedState = buildMeaningModel(conversationState, llmOutput);
   console.log('[governor] move used:', llmOutput.moveUsed, '| avatarState:', avatarState, '| queue remaining:', queue.length, '| reply:', reply);
 
-  return { reply, conversationState: updatedState, avatarState };
+  return { reply, conversationState: updatedState, avatarState, understandingPct: calculateUnderstanding(updatedState) };
 }

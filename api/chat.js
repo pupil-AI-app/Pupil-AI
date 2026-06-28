@@ -22,14 +22,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { reply, conversationState: updatedState, avatarState } = await runConversationGovernor({
+    const { reply, conversationState: updatedState, avatarState, understandingPct } = await runConversationGovernor({
       message,
       history,
       conversationState,
       grade,
       subject,
     });
-    return res.status(200).json({ reply, conversationState: updatedState, avatarState });
+    return res.status(200).json({ reply, conversationState: updatedState, avatarState, understandingPct });
   } catch (err) {
     console.error('[chat] error:', err.message);
     return res.status(500).json({ reply: "I'm having trouble hearing that. Can you try again?" });

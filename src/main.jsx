@@ -116,14 +116,19 @@ function Landing({ onStart }) {
 function GradeSelect({ onConfirm }) {
   const [grade, setGrade] = useState('');
   return (
-    <main className="screen landing">
-      <section className="hero-card small">
-        <div className="logo-name">Pupil-AI</div>
-        <h1 style={{ fontSize: 'clamp(28px, 4vw, 48px)', marginBottom: 8 }}>What grade are you in?</h1>
-        <p className="lede" style={{ marginBottom: 24 }}>Pupil will tailor the conversation to your level.</p>
+    <main className="landing-screen">
+      <nav className="landing-nav">
+        <span className="landing-brand">Pupil-AI</span>
+      </nav>
+      <div className="space-art-wrap">
+        <img src="/planets.png" alt="" className="planets-img" />
+      </div>
+      <div className="landing-center">
+        <img src="/ufo-raw.png" alt="Pupil's ship" className="ufo-img" />
+        <p className="landing-tagline">What grade are you in?</p>
         <div className="grade-row">
           <select
-            className="grade-select"
+            className="landing-grade-select"
             value={grade}
             onChange={(e) => setGrade(e.target.value)}
           >
@@ -132,11 +137,15 @@ function GradeSelect({ onConfirm }) {
               <option key={g} value={g}>Grade {g}</option>
             ))}
           </select>
-          <button className="primary" disabled={!grade} onClick={() => onConfirm(grade)}>
+          <button
+            className="landing-start-btn"
+            disabled={!grade}
+            onClick={() => onConfirm(grade)}
+          >
             Let's go →
           </button>
         </div>
-      </section>
+      </div>
     </main>
   );
 }

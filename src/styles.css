@@ -554,3 +554,223 @@ h1 { font-size: clamp(42px, 7vw, 82px); line-height: 0.92; letter-spacing: -0.07
   .report-grid { grid-template-columns: 1fr; }
   .message { max-width: 88%; }
 }
+
+/* ── Teacher Report ───────────────────────────────────────────── */
+.rpt-screen {
+  min-height: 100vh;
+  background: #f4f2ee;
+  overflow-y: auto;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #1a1814;
+}
+
+.rpt-inner {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 52px 40px 96px;
+}
+
+.rpt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 24px;
+  border-bottom: 2px solid #dedad4;
+  margin-bottom: 20px;
+}
+
+.rpt-brand-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9a9490;
+  margin-bottom: 4px;
+}
+
+.rpt-title {
+  font-family: 'Comfortaa', sans-serif;
+  font-size: 30px;
+  font-weight: 800;
+  color: #1a1814;
+  margin: 0 0 6px;
+}
+
+.rpt-meta {
+  font-size: 13px;
+  color: #7a7670;
+}
+
+.rpt-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.rpt-score-badge {
+  font-family: 'Comfortaa', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  padding: 7px 18px;
+  border-radius: 10px;
+}
+
+.rpt-score-plus  { background: #e6f4ea; color: #1e6e2e; }
+.rpt-score-check { background: #e3eeff; color: #1a4db5; }
+.rpt-score-minus { background: #fff2e0; color: #c05c00; }
+
+.rpt-time {
+  font-size: 12px;
+  color: #9a9490;
+}
+
+.rpt-rationale {
+  font-size: 15px;
+  color: #4a4845;
+  line-height: 1.65;
+  font-style: italic;
+  margin: 0 0 36px;
+}
+
+.rpt-section {
+  margin-bottom: 36px;
+}
+
+.rpt-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #9a9490;
+  margin: 0 0 12px;
+}
+
+.rpt-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rpt-list li {
+  font-size: 14px;
+  color: #2a2825;
+  line-height: 1.6;
+}
+
+.rpt-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rpt-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rpt-msg-speaker {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.rpt-msg-student .rpt-msg-speaker { color: #1a4db5; }
+.rpt-msg-pupil   .rpt-msg-speaker { color: #9a9490; }
+
+.rpt-msg-text {
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #dedad4;
+}
+
+.rpt-msg-student .rpt-msg-text { background: #ffffff; color: #1a1814; }
+.rpt-msg-pupil   .rpt-msg-text { background: #f0eeea; color: #5a5855; }
+
+.rpt-annotation {
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border-left: 3px solid;
+  color: #3a3835;
+}
+
+.rpt-perf-correct  { border-color: #3a9e54; background: #eef7f0; }
+.rpt-perf-partial  { border-color: #d4840a; background: #fef6e8; }
+.rpt-perf-incorrect{ border-color: #d94040; background: #fdf0f0; }
+
+.rpt-perf-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-right: 6px;
+  display: inline-block;
+}
+
+.rpt-perf-correct  .rpt-perf-tag { color: #1e6e2e; }
+.rpt-perf-partial  .rpt-perf-tag { color: #a05c00; }
+.rpt-perf-incorrect .rpt-perf-tag { color: #b02020; }
+
+.rpt-footer {
+  margin-top: 52px;
+  padding-top: 24px;
+  border-top: 1px solid #dedad4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rpt-materials-btn {
+  background: white;
+  border: 1px solid #dedad4;
+  border-radius: 99px;
+  padding: 11px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #9a9490;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.rpt-coming-soon {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: #e8e4de;
+  color: #7a7670;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-left: 6px;
+}
+
+.rpt-back-btn {
+  margin-left: auto;
+  background: #1a1814;
+  color: #f4f2ee;
+  border: none;
+  border-radius: 99px;
+  padding: 11px 24px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.rpt-back-btn:hover { opacity: 0.82; }
+
+.rpt-empty {
+  color: #9a9490;
+  font-style: italic;
+  margin-top: 40px;
+  text-align: center;
+}

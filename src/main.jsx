@@ -197,7 +197,7 @@ function SubjectSelect({ grade, onConfirm }) {
   );
 }
 
-function Chat({ grade, subject, topic, onFinish }) {
+function Chat({ grade, subject, topic, onFinish, onTeacher }) {
   const [messages, setMessages] = useState(starterMessages);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -205,6 +205,31 @@ function Chat({ grade, subject, topic, onFinish }) {
   const [avatarState, setAvatarState] = useState('CURIOUS');
   const [understandingPct, setUnderstandingPct] = useState(1);
   const [conversationComplete, setConversationComplete] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [sessionStartTime] = useState(() => Date.now());
+
+  async function sendToTeacher() {
+    setReportLoading(true);
+    try {
+      const res = await fetch('/api/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages,
+          conversationState,
+          grade,
+          subject,
+          sessionDurationMs: Date.now() - sessionStartTime,
+        }),
+      });
+      const data = await res.json();
+      onTeacher(data);
+    } catch (e) {
+      console.error('Report generation failed', e);
+    } finally {
+      setReportLoading(false);
+    }
+  }
 
   const AVATAR_IMAGES = {
     CURIOUS:     '/PUPIL_CURIOUS.png',
@@ -266,7 +291,9 @@ function Chat({ grade, subject, topic, onFinish }) {
               <p className="completion-subtitle">I really learned something today!</p>
             </div>
             <button className="landing-start-btn completion-btn" onClick={onFinish}>Finish</button>
-            <button className="completion-teacher-btn">Send results to teacher</button>
+            <button className="completion-teacher-btn" onClick={sendToTeacher} disabled={reportLoading}>
+              {reportLoading ? 'Generating report…' : 'Send results to teacher'}
+            </button>
           </div>
         </div>
       )}
@@ -318,60 +345,82 @@ function Chat({ grade, subject, topic, onFinish }) {
   );
 }
 
-function EndScreen({ onTeacher, onRestart }) {
+function TeacherReport({ data, onBack }) {
+  const SCORE_LABELS = { 'check-plus': 'Check +', 'check': 'Check', 'check-minus': 'Check −' };
+  const SCORE_CLASSES = { 'check-plus': 'rpt-score-plus', 'check': 'rpt-score-check', 'check-minus': 'rpt-score-minus' };
+  const PERF_LABELS = { correct: 'Correct', partial: 'Partial', incorrect: 'Incorrect' };
+  const PERF_CLASSES = { correct: 'rpt-perf-correct', partial: 'rpt-perf-partial', incorrect: 'rpt-perf-incorrect' };
+
   return (
-    <main className="screen end-screen">
-      <section className="hero-card small">
-        <PupilMark />
-        <h1>I think I understand now.</h1>
-        <p className="lede">The conversation is saved for teacher review.</p>
-        <div className="button-row">
-          <button className="primary" onClick={onTeacher}>Open teacher report</button>
-          <button className="secondary" onClick={onRestart}>Start over</button>
-        </div>
-      </section>
-    </main>
-  );
-}
+    <main className="rpt-screen">
+      <div className="rpt-inner">
+        <header className="rpt-header">
+          <div className="rpt-header-left">
+            <div className="rpt-brand-label">Pupil-AI</div>
+            <h1 className="rpt-title">Teacher Report</h1>
+            <div className="rpt-meta">
+              {[data?.topic, data?.subject, data?.grade, data?.generatedAt].filter(Boolean).join(' · ')}
+            </div>
+          </div>
+          <div className="rpt-header-right">
+            {data && (
+              <div className={`rpt-score-badge ${SCORE_CLASSES[data.score] || 'rpt-score-check'}`}>
+                {SCORE_LABELS[data.score] || 'Check'}
+              </div>
+            )}
+            {data && <div className="rpt-time">⏱ {data.timeSpent}</div>}
+          </div>
+        </header>
 
-function TeacherReport({ onBack }) {
-  return (
-    <main className="screen report-shell">
-      <header className="topbar">
-        <div className="brand"><ClipboardList size={22} /><span>Teacher Report</span></div>
-        <button className="ghost" onClick={onBack}>Back</button>
-      </header>
+        {!data && (
+          <p className="rpt-empty">No report data available.</p>
+        )}
 
-      <section className="report-grid">
-        <article className="report-card wide">
-          <h2>Conversation Summary</h2>
-          <p>The student explained a theme by connecting character choices, consequences, and symbolic moments. This is placeholder text until the backend summary engine is connected.</p>
-        </article>
+        {data && <>
+          <p className="rpt-rationale">{data.scoreRationale}</p>
 
-        <article className="report-card">
-          <h2>Evidence of Understanding</h2>
-          <ul>
-            <li>Identified a major theme.</li>
-            <li>Connected plot events to the theme.</li>
-            <li>Explained cause and consequence.</li>
-          </ul>
-        </article>
+          <section className="rpt-section">
+            <h2 className="rpt-section-label">Conversation Highlights</h2>
+            <ul className="rpt-list">
+              {data.highlights?.map((h, i) => <li key={i}>{h}</li>)}
+            </ul>
+          </section>
 
-        <article className="report-card">
-          <h2>Unresolved Gaps</h2>
-          <ul>
-            <li>Needs more textual evidence.</li>
-            <li>Could explain symbolic meaning with more precision.</li>
-          </ul>
-        </article>
+          <section className="rpt-section">
+            <h2 className="rpt-section-label">Next Steps for Teacher</h2>
+            <ul className="rpt-list">
+              {data.nextSteps?.map((s, i) => <li key={i}>{s}</li>)}
+            </ul>
+          </section>
 
-        <article className="report-card wide transcript-card">
-          <h2>Transcript</h2>
-          <div className="transcript-line"><strong>Pupil:</strong> What Earth idea are you teaching me today?</div>
-          <div className="transcript-line"><strong>Student:</strong> I want to teach you about a theme in Macbeth.</div>
-          <div className="transcript-line"><strong>Pupil:</strong> What happens that shows that theme?</div>
-        </article>
-      </section>
+          <section className="rpt-section">
+            <h2 className="rpt-section-label">Annotated Transcript</h2>
+            <div className="rpt-transcript">
+              {data.annotatedTranscript?.map((m, i) => (
+                <div key={i} className={`rpt-msg rpt-msg-${m.role}`}>
+                  <div className="rpt-msg-speaker">{m.role === 'student' ? 'Student' : 'Pupil'}</div>
+                  <div className="rpt-msg-text">{m.text}</div>
+                  {m.annotation && (
+                    <div className={`rpt-annotation ${PERF_CLASSES[m.performance] || ''}`}>
+                      {m.performance && m.performance !== 'na' && (
+                        <span className="rpt-perf-tag">{PERF_LABELS[m.performance]}</span>
+                      )}
+                      {m.annotation}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <footer className="rpt-footer">
+            <button className="rpt-materials-btn" disabled>
+              ✦ Create custom learning materials <span className="rpt-coming-soon">coming soon</span>
+            </button>
+            <button className="rpt-back-btn" onClick={onBack}>Close report</button>
+          </footer>
+        </>}
+      </div>
     </main>
   );
 }
@@ -381,11 +430,20 @@ function App() {
   const [grade, setGrade] = useState(null);
   const [subject, setSubject] = useState(null);
   const [topic, setTopic] = useState(null);
+  const [reportData, setReportData] = useState(null);
+
   if (screen === 'grade') return <GradeSelect onConfirm={(g) => { setGrade(g); setScreen('subject'); }} />;
   if (screen === 'subject') return <SubjectSelect grade={grade} onConfirm={(s, t) => { setSubject(s); setTopic(t); setScreen('chat'); }} />;
-  if (screen === 'chat') return <Chat grade={grade} subject={subject} topic={topic} onFinish={() => setScreen('end')} />;
-  if (screen === 'end') return <EndScreen onTeacher={() => setScreen('report')} onRestart={() => setScreen('landing')} />;
-  if (screen === 'report') return <TeacherReport onBack={() => setScreen('landing')} />;
+  if (screen === 'chat') return (
+    <Chat
+      grade={grade}
+      subject={subject}
+      topic={topic}
+      onFinish={() => setScreen('landing')}
+      onTeacher={(data) => { setReportData(data); setScreen('report'); }}
+    />
+  );
+  if (screen === 'report') return <TeacherReport data={reportData} onBack={() => setScreen('landing')} />;
   return <Landing onStart={() => setScreen('grade')} />;
 }
 

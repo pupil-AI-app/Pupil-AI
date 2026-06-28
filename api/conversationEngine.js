@@ -30,6 +30,7 @@ export function initialConversationState() {
     hasCausalLink: false,
     lastThreeMoves: [],
     avatarQueue: [],
+    understandingLevel: 1,
   };
 }
 
@@ -47,10 +48,11 @@ export function selectMove(state) {
     return 'CLOSE_GRACEFULLY';
   }
 
-  // Completion: all three quality signals met, OR the student has explained at least 5 distinct ideas.
+  // Completion: understanding reached 5/5, OR all quality signals met, OR 5+ distinct ideas.
+  const masteryComplete = (state.understandingLevel ?? 1) >= 5;
   const qualityComplete = hasExample && hasExplanation && hasCausalLink;
   const depthComplete = studentClaims.length >= 5;
-  if (qualityComplete || depthComplete) {
+  if (masteryComplete || qualityComplete || depthComplete) {
     return 'SUMMARIZE_AND_CLOSE';
   }
 
@@ -86,6 +88,11 @@ export function buildMeaningModel(state, llmOutput) {
   }
 
   if (llmOutput.avatarQueue !== undefined) next.avatarQueue = llmOutput.avatarQueue;
+
+  if (llmOutput.understandingPct !== undefined) {
+    const raw = parseInt(llmOutput.understandingPct, 10);
+    if (Number.isFinite(raw)) next.understandingLevel = Math.max(1, Math.min(5, raw));
+  }
 
   return next;
 }
@@ -412,8 +419,5 @@ export async function runConversationGovernor({ message, history = [], conversat
   const updatedState = buildMeaningModel(conversationState, llmOutput);
   console.log('[governor] move used:', llmOutput.moveUsed, '| avatarState:', avatarState, '| queue remaining:', queue.length, '| reply:', reply);
 
-  const rawPct = parseInt(llmOutput.understandingPct, 10);
-  const understandingPct = Number.isFinite(rawPct) ? Math.max(1, Math.min(5, rawPct)) : calculateUnderstanding(updatedState);
-
-  return { reply, conversationState: updatedState, avatarState, understandingPct };
+  return { reply, conversationState: updatedState, avatarState, understandingPct: updatedState.understandingLevel };
 }

@@ -204,6 +204,7 @@ function Chat({ grade, subject, topic, onFinish }) {
   const [conversationState, setConversationState] = useState(null);
   const [avatarState, setAvatarState] = useState('CURIOUS');
   const [understandingPct, setUnderstandingPct] = useState(1);
+  const [conversationComplete, setConversationComplete] = useState(false);
 
   const AVATAR_IMAGES = {
     CURIOUS:     '/PUPIL_CURIOUS.png',
@@ -238,6 +239,9 @@ function Chat({ grade, subject, topic, onFinish }) {
       if (data.avatarState) setAvatarState(data.avatarState);
       if (data.understandingPct !== undefined) setUnderstandingPct(data.understandingPct);
       setMessages([...next, { role: 'pupil', text: reply }]);
+      if (data.conversationState?.lastThreeMoves?.includes('CLOSE_GRACEFULLY')) {
+        setTimeout(() => setConversationComplete(true), 1200);
+      }
     } catch {
       setMessages([...next, { role: 'pupil', text: "I'm having trouble hearing that. Can you try again?" }]);
     } finally {
@@ -251,6 +255,19 @@ function Chat({ grade, subject, topic, onFinish }) {
         <button className="ghost" onClick={onFinish}>Finish chat</button>
         <span className="landing-brand">Pupil-AI</span>
       </nav>
+
+      {conversationComplete && (
+        <div className="completion-overlay">
+          <div className="completion-card">
+            <img src="/PUPIL_CELEBRATING.png" alt="Pupil celebrating" className="completion-avatar" />
+            <div className="completion-text">
+              <h2 className="completion-title">Great job!</h2>
+              <p className="completion-subtitle">I really learned something today!</p>
+            </div>
+            <button className="landing-start-btn completion-btn" onClick={onFinish}>Finish</button>
+          </div>
+        </div>
+      )}
 
       <div className="chat-layout">
         {/* Left column: meter + avatar */}

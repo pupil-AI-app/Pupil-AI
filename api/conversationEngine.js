@@ -254,18 +254,21 @@ Respond ONLY with valid JSON. Fill fields in this order — each one feeds the n
   "pupilsInternalNotice": "the ONE specific thing that is surprising, counterintuitive, unclear, or worth connecting — grounded entirely in what the student said. This drives the response. No generic observations.",
   "studentFacingResponse": "string — written from pupilsInternalNotice; natural, specific, grounded in the student's words; no outside knowledge; one question max",
   "avatarState": "one word — Pupil's emotional state RIGHT NOW after reading this student message. You MUST pick a different state from the previous turn whenever possible — avoid repeating the same state twice in a row. Choose from exactly these five: EXCITED (something new or surprising just arrived), THINKING (processing a complex idea or forming a connection), SURPRISED (something contradicted expectations or was unexpected), DETERMINED (working hard to follow a detailed or tricky explanation), CURIOUS (attentive and wanting more — use this as a last resort only, not a default). The state must reflect Pupil's internal reaction to THIS specific message. Change the state in at least 4 out of every 5 responses.",
-  "understandingPct": "integer 0–100 — Pupil's genuine percentage understanding of the topic RIGHT NOW. Start at 0. Increase as the student explains clearly. DECREASE if the student says something vague, contradictory, or confusing — this number reflects how well Pupil actually understands at this moment, not a reward for effort. A single clear explanation might reach 40%. A confused or incomplete message might drop it back 10–15 points. Never jump more than 25 points in one turn."
+  "understandingPct": "integer 1–5 — Pupil's genuine level of understanding RIGHT NOW. 1 = barely any idea, 2 = partial grasp, 3 = getting it, 4 = solid understanding, 5 = fully understands. Start at 1. Increase as the student explains clearly. DECREASE if the student says something vague, contradictory, or confusing. Never jump more than 1 point per turn."
 }`;
 }
 
 // ─── Understanding score ──────────────────────────────────────────────────────
 
 function calculateUnderstanding(state) {
-  const claimScore = Math.min(state.studentClaims.length, 5) * 10; // 10% per claim, max 50%
-  const exampleScore = state.hasExample ? 20 : 0;
-  const explanationScore = state.hasExplanation ? 20 : 0;
-  const causalScore = state.hasCausalLink ? 10 : 0;
-  return Math.min(claimScore + exampleScore + explanationScore + causalScore, 100);
+  const pct = Math.min(
+    Math.min(state.studentClaims.length, 5) * 10 +
+    (state.hasExample ? 20 : 0) +
+    (state.hasExplanation ? 20 : 0) +
+    (state.hasCausalLink ? 10 : 0),
+    100
+  );
+  return Math.max(1, Math.min(5, Math.ceil(pct / 20)));
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
@@ -335,7 +338,7 @@ export async function runConversationGovernor({ message, history = [], conversat
       moveUsed: 'AWAIT_FIRST_IDEA',
     });
     console.log('[governor] AWAIT_FIRST_IDEA hard-coded | topic:', topicName);
-    return { reply, conversationState: updatedState, avatarState: 'EXCITED', understandingPct: 0 };
+    return { reply, conversationState: updatedState, avatarState: 'EXCITED', understandingPct: 1 };
   }
 
   // CLOSE_GRACEFULLY is hard-coded — fires once after SUMMARIZE_AND_CLOSE.
@@ -410,7 +413,7 @@ export async function runConversationGovernor({ message, history = [], conversat
   console.log('[governor] move used:', llmOutput.moveUsed, '| avatarState:', avatarState, '| queue remaining:', queue.length, '| reply:', reply);
 
   const rawPct = parseInt(llmOutput.understandingPct, 10);
-  const understandingPct = Number.isFinite(rawPct) ? Math.max(0, Math.min(100, rawPct)) : calculateUnderstanding(updatedState);
+  const understandingPct = Number.isFinite(rawPct) ? Math.max(1, Math.min(5, rawPct)) : calculateUnderstanding(updatedState);
 
   return { reply, conversationState: updatedState, avatarState, understandingPct };
 }

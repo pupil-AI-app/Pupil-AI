@@ -203,7 +203,7 @@ function Chat({ grade, subject, topic, onFinish }) {
   const [loading, setLoading] = useState(false);
   const [conversationState, setConversationState] = useState(null);
   const [avatarState, setAvatarState] = useState('CURIOUS');
-  const [understandingPct, setUnderstandingPct] = useState(0);
+  const [understandingPct, setUnderstandingPct] = useState(1);
 
   const AVATAR_IMAGES = {
     CURIOUS:     '/PUPIL_CURIOUS.png',
@@ -257,9 +257,9 @@ function Chat({ grade, subject, topic, onFinish }) {
         <div className="left-col">
           <div className="understanding-panel">
             <div className="understanding-label">Pupil's Understanding</div>
-            <div className="understanding-pct">{understandingPct}%</div>
+            <div className="understanding-pct">{understandingPct} <span className="understanding-pct-max">/ 5</span></div>
             <div className="understanding-track">
-              <div className="understanding-fill" style={{ width: `${understandingPct}%` }} />
+              <div className="understanding-fill" style={{ width: `${(understandingPct / 5) * 100}%` }} />
             </div>
           </div>
           <aside className="pupil-panel">

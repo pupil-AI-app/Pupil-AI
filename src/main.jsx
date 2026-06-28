@@ -100,7 +100,7 @@ function Landing({ onStart }) {
       </div>
 
       <div className="landing-center">
-        <UFOIllustration />
+        <img src="/pupil-logo.png" alt="Pupil" className="landing-logo" />
         <p className="landing-tagline">What can you teach me today?</p>
         <div className="landing-composer">
           <input

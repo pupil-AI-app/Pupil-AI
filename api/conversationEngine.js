@@ -376,7 +376,8 @@ export async function runConversationGovernor({ message, history = [], conversat
 
   const updatedState = buildMeaningModel(conversationState, llmOutput);
   const VALID_LLM_STATES = ['CURIOUS', 'DETERMINED', 'EXCITED', 'SURPRISED', 'THINKING'];
-  const avatarState = VALID_LLM_STATES.includes(llmOutput.avatarState) ? llmOutput.avatarState : 'CURIOUS';
+  const rawState = (llmOutput.avatarState || '').toUpperCase().trim();
+  const avatarState = VALID_LLM_STATES.includes(rawState) ? rawState : 'CURIOUS';
   console.log('[governor] move used:', llmOutput.moveUsed, '| avatarState:', avatarState, '| reply:', reply);
 
   return { reply, conversationState: updatedState, avatarState };

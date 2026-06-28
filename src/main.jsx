@@ -205,12 +205,12 @@ function Chat({ grade, subject, topic, onFinish }) {
   const [avatarState, setAvatarState] = useState('CURIOUS');
 
   const AVATAR_IMAGES = {
-    CURIOUS:  null,
-    EXCITED:  null,
-    CONFUSED: null,
-    AWARE:    null,
-    ENGAGED:  null,
-    WONDERING: null,
+    CURIOUS:     '/PUPIL_CURIOUS.png',
+    DETERMINED:  '/PUPIL_DETERMINED.png',
+    EXCITED:     '/PUPIL_EXCITED.png',
+    SURPRISED:   '/PUPIL_SURPRISED.png',
+    THINKING:    '/PUPIL_THINKING.png',
+    CELEBRATING: '/PUPIL_CELEBRATING.png',
   };
 
   async function sendMessage() {

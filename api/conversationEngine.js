@@ -239,7 +239,7 @@ Respond ONLY with valid JSON. Fill fields in this order — each one feeds the n
   "moveUsed": "LEARN or SUMMARIZE_AND_CLOSE",
   "pupilsInternalNotice": "the ONE specific thing that is surprising, counterintuitive, unclear, or worth connecting — grounded entirely in what the student said. This drives the response. No generic observations.",
   "studentFacingResponse": "string — written from pupilsInternalNotice; natural, specific, grounded in the student's words; no outside knowledge; one question max",
-  "avatarState": "one word — Pupil's emotional state after processing this message. Choose the single best fit: CURIOUS (default, attentive), EXCITED (something genuinely surprising or delightful), CONFUSED (something unclear or seemingly contradictory), AWARE (a connection or realisation just clicked), ENGAGED (deep in the explanation, wanting more detail), WONDERING (reflective, sitting with a big idea)"
+  "avatarState": "one word — Pupil's emotional state after processing this student message. Choose the single best fit from these five only: CURIOUS (attentive, listening carefully, wanting to understand more), DETERMINED (leaning in, processing hard, working to follow a complex idea), EXCITED (something genuinely surprising or delightful just landed), SURPRISED (caught off-guard by an unexpected angle or implication), THINKING (reflective, sitting with a big idea or connection, not yet resolved). Base this on Pupil's internal model-building: use THINKING when a new connection is forming, DETERMINED when the explanation is getting complex, SURPRISED when something contradicts expectations, EXCITED when something genuinely clicks, CURIOUS as the default attentive state."
 }`;
 }
 
@@ -310,7 +310,7 @@ export async function runConversationGovernor({ message, history = [], conversat
       moveUsed: 'AWAIT_FIRST_IDEA',
     });
     console.log('[governor] AWAIT_FIRST_IDEA hard-coded | topic:', topicName);
-    return { reply, conversationState: updatedState, avatarState: 'CURIOUS' };
+    return { reply, conversationState: updatedState, avatarState: 'EXCITED' };
   }
 
   // CLOSE_GRACEFULLY is hard-coded — fires once after SUMMARIZE_AND_CLOSE.
@@ -326,7 +326,7 @@ export async function runConversationGovernor({ message, history = [], conversat
     const reply = closings[Math.floor(Math.random() * closings.length)];
     const updatedState = buildMeaningModel(conversationState, { moveUsed: 'CLOSE_GRACEFULLY' });
     console.log('[governor] CLOSE_GRACEFULLY hard-coded');
-    return { reply, conversationState: updatedState, avatarState: 'EXCITED' };
+    return { reply, conversationState: updatedState, avatarState: 'CELEBRATING' };
   }
 
   const historyMessages = history
@@ -375,7 +375,8 @@ export async function runConversationGovernor({ message, history = [], conversat
   }
 
   const updatedState = buildMeaningModel(conversationState, llmOutput);
-  const avatarState = llmOutput.avatarState || 'CURIOUS';
+  const VALID_LLM_STATES = ['CURIOUS', 'DETERMINED', 'EXCITED', 'SURPRISED', 'THINKING'];
+  const avatarState = VALID_LLM_STATES.includes(llmOutput.avatarState) ? llmOutput.avatarState : 'CURIOUS';
   console.log('[governor] move used:', llmOutput.moveUsed, '| avatarState:', avatarState, '| reply:', reply);
 
   return { reply, conversationState: updatedState, avatarState };

@@ -164,7 +164,7 @@ function SubjectSelect({ grade, onConfirm }) {
       </div>
       <div className="landing-center">
         <img src="/ufo-raw.png" alt="Pupil's ship" className="ufo-img" />
-        <p className="landing-tagline">What are you studying?</p>
+        <p className="landing-tagline">What are we exploring?</p>
         <div className="subject-stack">
           <select
             className="landing-grade-select"

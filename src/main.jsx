@@ -205,41 +205,35 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
   const [lastModel, setLastModel] = useState(null);
   const savedRef = React.useRef(false);
 
-  async function saveIfNeeded(currentMessages, currentState, currentPct) {
+  function triggerSave(currentMessages, currentState, currentPct) {
     if (savedRef.current) return;
     savedRef.current = true;
-    try {
-      const res = await fetch('/api/conversations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topic: currentState?.topic || topic || null,
-          grade,
-          subject,
-          messages: currentMessages,
-          understandingPct: currentPct,
-        }),
-      });
-      if (!res.ok) {
-        console.error('[save] failed:', res.status, await res.text());
-        savedRef.current = false;
-      } else {
-        console.log('[save] conversation saved');
-      }
-    } catch (err) {
-      console.error('[save] error:', err);
-      savedRef.current = false;
-    }
+    fetch('/api/conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic: currentState?.topic || topic || null,
+        grade,
+        subject,
+        messages: currentMessages,
+        understandingPct: currentPct,
+      }),
+    })
+      .then(res => {
+        if (!res.ok) { console.error('[save] failed:', res.status); savedRef.current = false; }
+        else console.log('[save] conversation saved');
+      })
+      .catch(err => { console.error('[save] error:', err); savedRef.current = false; });
   }
 
-  async function handleFinish() {
-    await saveIfNeeded(messages, conversationState, understandingPct);
+  function handleFinish() {
+    triggerSave(messages, conversationState, understandingPct);
     onFinish();
   }
 
   React.useEffect(() => {
     if (!conversationComplete) return;
-    saveIfNeeded(messages, conversationState, understandingPct);
+    triggerSave(messages, conversationState, understandingPct);
   }, [conversationComplete]);
 
   async function sendToTeacher() {

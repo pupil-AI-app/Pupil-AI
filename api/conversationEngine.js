@@ -365,6 +365,7 @@ export async function runConversationGovernor({ message, history = [], conversat
     .filter(m => m.role === 'pupil' || m.role === 'student')
     .map(m => ({ role: m.role === 'pupil' ? 'assistant' : 'user', content: m.text }));
 
+  console.log('[governor] calling model: gpt-4o');
   const callLLM = () => client.chat.completions.create({
     model: 'gpt-4o',
     messages: [

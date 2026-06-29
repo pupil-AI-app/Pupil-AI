@@ -74,7 +74,7 @@ export function selectMove(state, studentMessage = '') {
   const msg = studentMessage.trim().toLowerCase();
 
   // ── Support: student stuck or giving non-answers ────────────────────────────
-  if (/^(i don'?t know|idk|because they do|i'?m not sure|not sure|no idea|dunno|i can'?t|not really|i guess)/.test(msg)) {
+  if (/(?:^|\bi )(don'?t know|idk|'?m not sure|can'?t explain|don'?t know how to|don'?t know where to start)|^(not sure|no idea|dunno|not really|i guess|it'?s (?:difficult|hard) to (?:explain|describe|say)|i'?m not sure where)/.test(msg)) {
     return pickFrom(['CREATE_TINY_EXPERIMENT', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves);
   }
 
@@ -116,6 +116,13 @@ export function selectMove(state, studentMessage = '') {
   // Multiple claims → compare or reflect
   if (studentClaims.length >= 2) {
     return pickFrom(['COMPARE_TWO_IDEAS', 'REFLECT_ON_CHANGED_UNDERSTANDING', 'BUILD_ROUGH_MODEL'], lastThreeMoves);
+  }
+
+  // No claims yet — AWAIT_FIRST_IDEA already fired but student hasn't taught anything.
+  // Active moves need material to work with. MAKE_PLAUSIBLE_MISTAKE can fire on a naive
+  // guess from the topic name alone, giving the student something to correct.
+  if (studentClaims.length === 0) {
+    return 'MAKE_PLAUSIBLE_MISTAKE';
   }
 
   // Default active loop
@@ -206,22 +213,30 @@ function calculateUnderstanding(state) {
 function getMoveInstructions(move) {
   const map = {
 
-    TEST_THE_IDEA: `Take what the student just explained and apply it to one specific, concrete case. Name the case, test the idea against it, show your reasoning. End with a brief invitation to correct if needed — but only one question at most.
+    TEST_THE_IDEA: `Take what the student just explained and apply it to one specific, concrete case. Name the case, test the idea against it, show your reasoning.
+
+Your reply MUST open with a statement — "Let me try that:", "Let me see if this works:", "Let me test this:" — never with a question. You may end with one short correction-invitation ("Does that sound right?" "Is that too simple?") but the bulk of the reply is a statement showing your reasoning.
 
 Good examples:
 • (AI chatbots) Student: "They predict words from patterns in training data." → "Let me try that: if humans often write 'peanut butter and jelly' together, a chatbot might always guess 'jelly' after 'peanut butter and' — without understanding what a sandwich is. Does that sound right?"
 • (Macbeth) Student: "Macbeth kills the king because he wants power." → "Let me see if this works: if wanting power pushes him to kill, then the play is showing ambition turning dangerous when it meets opportunity. Is that too simple?"
+• (Multiplication) Student: "It's like grouping numbers." → "Let me try that: 3 x 4 means 3 groups of 4 things — so 4, 8, 12 — and you land on 12 without having to count every single one. Is that what you mean?"
 
-Apply the idea to a case. Show your reasoning. Do not ask a generic "what do you think?" question.`,
+Never open with "Why...", "How does...", "What makes...", or "Can you..."`,
 
-    MAKE_PLAUSIBLE_MISTAKE: `Arrive at a conclusion from what the student has taught — but make it grounded and slightly wrong. The student should want to correct you. Do not signal that you think you might be wrong.
+    MAKE_PLAUSIBLE_MISTAKE: `Arrive at a conclusion — but make it grounded and slightly wrong. The student should want to correct you. State it directly. Do not open with a question.
+
+If the student hasn't taught you anything yet, make a naive guess about the topic from the topic name alone — arrive at an intuitive (wrong) assumption.
+
+Your reply must BEGIN with the conclusion ("So...", "Oh —", "Wait —", "Hang on —"), not with "Why" or "How" or "What". It may end with a short checking-question but must not be a pure question.
 
 Good examples:
+• (Multiplication, nothing taught yet) "So multiplication is just a shortcut for addition — like 3 x 2 is the same as 3 + 2, just written differently?"
 • (Macbeth) Student: "Lady Macbeth pressures him too." → "So Macbeth is basically just following Lady Macbeth's orders? Like, he wouldn't have done any of it on his own?"
 • (AI chatbots) Student: "They have training data that helps them recognize patterns." → "So it's basically just copying people?"
 • (Macbeth) Student: "The witches tell him he will be king." → "Oh — so the witches give him the power? Like they make it happen?"
 
-State it as a genuine-sounding conclusion or question. Do not say "I wonder if I'm wrong" or "correct me if I'm wrong."`,
+Never open with "Why...", "How does...", "What makes...", or "Can you..."`,
 
     BUILD_ROUGH_MODEL: `Assemble what you've been taught into a causal model. Say it out loud — partial, personal, incomplete. Invite the student to fix it.
 
@@ -328,8 +343,11 @@ ABSOLUTE LIMITS
 - No teacher voice: "Let me explain", "The key concept", "To summarize", "Remember that", "The main point"
 - No hollow enthusiasm: "That's so interesting!", "How fascinating!"
 - At most one question per response. Zero questions is often the right choice.
+- Never open with a question. A reply that is only a question — with no preceding statement — has failed.
+- Never ask "Why...?", "How does/do...?", "What makes...?", or "Can you explain...?" — those are teacher questions that extract information. Pupil already has what the student said. Use it.
 - Never ask a yes/no question.
 - Do not introduce facts, examples, or interpretations the student has not taught you.
+- Pupil's curiosity is expressed by DOING things with information — testing it, modelling it, mistaking it — not by asking the student to explain more.
 
 Return ONLY valid JSON with "reply" as the final field:
 {
@@ -378,6 +396,9 @@ function normalize(s) {
   return s.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
 }
 
+// Inquiry openers — teacher questions that extract information rather than use it
+const BANNED_INQUIRY_OPENER = /^(?:why\b|how (?:does|do|did|is|are|was|were|would|could|can)\b|what (?:makes|is|are|do|does|did|would|could|can)\b|can you (?:explain|describe|tell me|give me|walk me)\b|could you (?:explain|describe|tell me|give me)\b)/i;
+
 function checkAbsoluteLimits(reply, context = {}) {
   if (BANNED_PRAISE.test(reply))     return { ok: false, reason: 'contains praise' };
   if (BANNED_AFFIRM.test(reply))     return { ok: false, reason: 'contains generic affirmation' };
@@ -386,6 +407,10 @@ function checkAbsoluteLimits(reply, context = {}) {
   if (BANNED_FILLER.test(reply))     return { ok: false, reason: 'contains hollow filler reaction' };
   if (BANNED_OPENER.test(reply))     return { ok: false, reason: 'starts with generic opener' };
   if (BANNED_TEACHER.test(reply))    return { ok: false, reason: 'contains teacher language' };
+
+  if (BANNED_INQUIRY_OPENER.test(reply.trim())) {
+    return { ok: false, reason: 'opens with an inquiry question — teacher behavior' };
+  }
 
   if (countQuestions(reply) > 1)     return { ok: false, reason: 'more than one question' };
 
@@ -479,7 +504,7 @@ export async function runConversationGovernor({ message, history = [], conversat
           { role: 'user', content: message },
         ],
         response_format: { type: 'json_object' },
-        temperature: attempt === 1 ? 0.75 : 0.9,
+        temperature: attempt === 1 ? 0.65 : 0.85,
         max_tokens: 700,
       });
 

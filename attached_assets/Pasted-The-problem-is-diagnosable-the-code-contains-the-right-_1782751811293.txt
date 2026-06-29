@@ -1,0 +1,140 @@
+The problem is diagnosable: the code contains the right move vocabulary, but the bot is not actually behaving according to that vocabulary.
+
+In this simulation, Pupil repeatedly asks ordinary tutor/interviewer questions:
+
+“Could you give me an example…”
+“Why does multiplying…”
+“What makes multiplication work…”
+“How is thinking about multiplication…”
+
+That is exactly the failure mode the redesign was supposed to eliminate.
+
+Main diagnosis
+1. AWAIT_FIRST_IDEA mishandles student uncertainty
+
+Student says:
+
+“It’s difficult to describe”
+
+Pupil responds:
+
+“Could you give me an example…”
+
+That is not terrible, but it is not Pupil-like. The engine should treat this as student stuck, but the stuck-detection regex only checks phrases like “I don’t know,” “idk,” “not sure,” etc. It does not catch “difficult to describe.”
+
+Better move:
+
+“Let’s make it tiny: if there are 3 bags with 2 apples in each, I’d count 2 + 2 + 2. Is that the kind of thing multiplication does?”
+
+That would help the student teach without turning Pupil into a worksheet.
+
+2. The move selector is probably choosing active moves, but the prompt examples still allow weak questions
+
+Several move instructions end with soft verification questions:
+
+“Does that sound right?”
+“Is that roughly right?”
+“Is that too simple?”
+
+So even when the selected move is BUILD_ROUGH_MODEL or TEST_THE_IDEA, the LLM can satisfy the move by producing a cautious paraphrase plus a question. That is what happened here:
+
+“So if I’ve got this right…”
+
+That is not active enough.
+
+3. MAKE_PLAUSIBLE_MISTAKE is not being prioritized after shallow agreement
+
+The student says:
+
+“Yeah”
+
+This is a perfect moment for a plausible mistake.
+
+Pupil should say something like:
+
+“So multiplication is just a faster way to add any numbers together, even if the groups are different sizes?”
+
+Instead it asks:
+
+“What makes multiplication work in this way…”
+
+That is generic and too abstract for a young student.
+
+The selector has a stuck-response rule, but no rule for low-information agreement like “yeah,” “yes,” “mhm,” “kind of.” That is a major gap.
+
+4. The bot is asking “why” too early and too often
+
+For multiplication, especially with a young student, “Why does multiplying 3 and 2 give you 6?” is not a natural learner move. It sounds like a teacher probing conceptual understanding.
+
+Pupil should instead test a model:
+
+“So 3 × 2 means I can picture 3 things, then another 3 things, and count 6 total.”
+
+Then let the student repair it.
+
+5. The prompt bans yes/no questions, but the code examples model yes/no questions
+
+This contradiction matters. The prompt says:
+
+“Never ask a yes/no question.”
+
+But the move examples repeatedly use yes/no forms.
+
+The model is receiving mixed signals, so it defaults to safe generic questioning.
+
+The deeper problem
+
+The current engine still treats student replies as material to be queried, not material to be used.
+
+The rule should be:
+
+After every substantive student claim, Pupil must do something with it before asking anything.
+
+In this simulation, Pupil almost never does anything. It asks for more.
+
+Most important repair
+
+Add a hard behavioral constraint:
+
+No bare questions. Every response must include a Pupil attempt first.
+
+Bad:
+
+“How is multiplication different from repeated addition?”
+
+Better:
+
+“I’m starting to think multiplication is repeated addition when all the groups are the same size. So maybe it isn’t different — it’s the same idea shown in a shorter way.”
+
+Better with repair invitation:
+
+“I’m starting to think multiplication is repeated addition when all the groups are the same size. Fix that if I’m messing it up.”
+
+Specific next fixes
+Add stuck phrases:
+“hard to explain”
+“difficult to describe”
+“I don’t know how to say it”
+“kind of”
+“sort of”
+
+Add low-information agreement detection:
+
+“yes”
+“yeah”
+“yep”
+“mhm”
+“I guess”
+“sure”
+
+These should trigger MAKE_PLAUSIBLE_MISTAKE, CREATE_TINY_EXPERIMENT, or APPLY_TO_NEW_CASE.
+
+Rewrite move instructions so every move requires:
+
+attempt first, question second or not at all
+
+Remove yes/no questions from examples.
+Add a grade-sensitive simplicity rule:
+For elementary math, Pupil should use tiny concrete objects before abstract “why/how” questions.
+
+Bottom line: this version has the right architecture on paper, but the behavior is still too teacherly and interrogative. The next repair should not add more moves. It should make the existing moves unavoidable.

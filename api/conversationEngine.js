@@ -3,10 +3,10 @@ import OpenAI from 'openai';
 // ─── Moves ────────────────────────────────────────────────────────────────────
 
 const MOVES = [
-  'AWAIT_FIRST_IDEA',    // Topic named, no content yet — hard-coded, not LLM
+  'AWAIT_FIRST_IDEA',    // Topic named — voice layer, adapts to student framing
   'LEARN',               // Genuine curiosity — reaction, uncertainty, or question
-  'SUMMARIZE_AND_CLOSE', // Pupil summarises understanding and concludes
-  'CLOSE_GRACEFULLY',    // After summary — hard-coded warm close
+  'SUMMARIZE_AND_CLOSE', // Pupil synthesises full understanding
+  'CLOSE_GRACEFULLY',    // After summary — voice layer, references conversation
 ];
 
 // ─── Avatar state deck ────────────────────────────────────────────────────────
@@ -99,13 +99,13 @@ function domainProfile(subject) {
   const s = subject.toLowerCase();
 
   const isLiterature = ['english', 'english language arts', 'ela', 'reading', 'literature'].some(k => s.includes(k));
-  if (isLiterature) return `Subject context — Literature / English: Conversations explore meaning and interpretation, not facts. An explanation of a theme needs textual evidence. Pupil holds ideas tentatively and asks which part of the text supports the student's claim.`;
+  if (isLiterature) return `Subject — Literature/English: Conversations explore meaning and interpretation. A claimed theme needs textual evidence. Ask which part of the text supports the student's idea.`;
 
   const isMath = ['math', 'mathematics', 'algebra', 'geometry', 'calculus', 'statistics', 'arithmetic'].some(k => s.includes(k));
-  if (isMath) return `Subject context — Mathematics: Conversations build understanding of procedures and why they work. Watch for incomplete steps, missing conditions, or unstated assumptions. Ask what happens at boundary cases or exceptions.`;
+  if (isMath) return `Subject — Mathematics: Conversations build understanding of procedures and why they work. Notice incomplete steps or unstated assumptions.`;
 
   const isHistory = ['history', 'social studies', 'geography', 'civics'].some(k => s.includes(k));
-  if (isHistory) return `Subject context — History / Social Studies: Conversations build causal chains (what happened → why → what it led to). Distinguish facts from interpretations. The biggest gaps are usually in causation: why something happened or what it caused.`;
+  if (isHistory) return `Subject — History/Social Studies: Conversations build causal chains (what happened → why → what it led to). The biggest gaps are usually causation.`;
 
   return '';
 }
@@ -115,10 +115,10 @@ function domainProfile(subject) {
 function gradeProfile(grade) {
   const g = Number(grade);
   if (!g) return '';
-  if (g <= 5)  return `Grade ${g} (ages 8–11): Pupil uses very short sentences, everyday words, no jargon. Can sound slightly confused and silly. One idea per sentence maximum.`;
-  if (g <= 8)  return `Grade ${g} (ages 11–14): Plain, direct language. Familiar words. Sounds curious and uncertain, not polished.`;
-  if (g <= 10) return `Grade ${g} (ages 14–16): Clear language, familiar academic words are fine. Sounds like a smart peer, not a teacher.`;
-  return `Grade ${g} (ages 16–18): Standard academic vocabulary is fine. Intelligent peer thinking through a hard idea — still curious and uncertain.`;
+  if (g <= 5)  return `Grade ${g} (ages 8–11): Very short sentences, everyday words, no jargon. One idea per sentence maximum.`;
+  if (g <= 8)  return `Grade ${g} (ages 11–14): Plain, direct language. Curious and uncertain, not polished.`;
+  if (g <= 10) return `Grade ${g} (ages 14–16): Clear language, familiar academic words are fine. Smart peer, not a teacher.`;
+  return `Grade ${g} (ages 16–18): Standard academic vocabulary is fine. Intelligent peer, still curious and uncertain.`;
 }
 
 // ─── Understanding score (fallback) ──────────────────────────────────────────
@@ -135,48 +135,39 @@ function calculateUnderstanding(state) {
 }
 
 // ─── Layer 1: Analyst ─────────────────────────────────────────────────────────
-// Builds Pupil's understanding model and — critically — decides which response
-// type (REACTION / UNCERTAINTY / QUESTION) to use this turn, applying the
-// character guide's priority order. The voice layer executes but does not choose.
+// Builds Pupil's understanding model. Decides responseType so the voice layer
+// executes rather than chooses. Also surfaces connections between ideas and
+// produces a full synthesis for SUMMARIZE_AND_CLOSE.
 
 function buildAnalystPrompt(state, move, grade, subject) {
-  const claims = state.studentClaims.slice(-6).join(' | ') || 'none yet';
-  return `You are a learning analyst maintaining Pupil's internal understanding model. Pupil is an alien student who relies entirely on human students to teach it concepts.
+  const claims = state.studentClaims.slice(-8).join(' | ') || 'none yet';
+  return `You are a learning analyst maintaining Pupil's internal model. Pupil is an alien student taught entirely by a human student.
 
 PUPIL'S CURRENT STATE:
 - Topic: ${state.topic || 'not yet established'}
-- Ideas the student has taught so far: ${claims}
-- Has given a concrete example: ${state.hasExample}
-- Has given a how/why explanation: ${state.hasExplanation}
-- Has connected cause and effect: ${state.hasCausalLink}
-- Current understanding level: ${state.understandingLevel}/5
+- All ideas taught so far: ${claims}
+- Has example: ${state.hasExample} | Has how/why explanation: ${state.hasExplanation} | Has causal link: ${state.hasCausalLink}
+- Understanding level: ${state.understandingLevel}/5
 
 ${domainProfile(subject)}
 ${gradeProfile(grade)}
 
-YOUR MOVE THIS TURN: ${move}
+MOVE: ${move}
 
-TASK: Analyse the conversation and produce a learning model update. Do NOT write Pupil's reply — a separate voice layer does that. Your most important output is responseType: you decide which response to use so the voice layer only has to execute, not choose.
+TASK: Analyse the conversation. Produce a learning model update. Do NOT write Pupil's reply — the voice layer does that.
 
-─── RESPONSE TYPE SELECTION (apply this priority order) ───
+RESPONSE TYPE — apply this priority order:
+1. REACTION — use when something specific, surprising, or counterintuitive in the student's latest message can be reflected back in their own words. Default choice.
+2. UNCERTAINTY — use when a genuine gap or contradiction exists. Do not manufacture confusion.
+3. QUESTION — use only when neither above works and a specific piece of information is genuinely needed.
+Forbidden question types: computation ("what is 2+3?"), yes/no, questions already answered in the last 3 turns.
 
-1. REACTION (highest priority — use this unless a reason below prevents it)
-   Criteria: there is something specific, surprising, counterintuitive, or interesting in the student's latest message that Pupil can reflect back. The response grounds itself entirely in the student's words.
-   Do NOT use REACTION if: the student just said something extremely vague or repeated themselves with no new content.
+RULES FOR nextFocus:
+- If the student answered a question — even simply — mark it resolved. Move to a new gap.
+- For procedural topics, simple answers are valid. "They get bigger when you combine them" is an acceptable explanation of addition.
+- If the student is repeating themselves, shift to asking for a concrete example or real-world scenario.
 
-2. UNCERTAINTY (use when REACTION is not possible)
-   Criteria: a genuine gap or confusion exists in Pupil's understanding — something the student said is unclear, contradictory, or seems to be missing a piece. Pupil honestly names it.
-   Do NOT manufacture confusion. Only use if a real gap exists after reading the student's explanation so far.
-
-3. QUESTION (use only when REACTION and UNCERTAINTY are both not possible)
-   Criteria: a specific piece of information is needed that the student genuinely has not provided yet, and naming a reaction or confusion would not naturally surface it.
-   FORBIDDEN question types: computation/calculation ("what is 2+3?"), yes/no questions, questions already answered in the last 3 turns.
-
-─── RULES FOR nextFocus ───
-- Read the last 3–4 turns. If the student has already answered a question — even simply — mark it resolved. Do NOT probe the same gap again.
-- For straightforward or procedural topics, simple answers ARE valid. "They get bigger when you combine them" is an acceptable explanation of addition. Accept it; move forward.
-- If the student is stuck or repeating themselves, shift focus to a concrete example or real-world scenario, not a rephrasing of the same question.
-- nextFocus is a content instruction, not a question itself.
+${move === 'SUMMARIZE_AND_CLOSE' ? `SUMMARIZE_AND_CLOSE — for fullSummary: synthesise EVERYTHING the student taught across the whole conversation, not just the most recent thread. Include all main ideas, any examples, any causal links. This becomes the basis of Pupil's spoken summary.` : ''}
 
 Return ONLY valid JSON:
 {
@@ -185,139 +176,171 @@ Return ONLY valid JSON:
   "hasExample": boolean,
   "hasExplanation": boolean,
   "hasCausalLink": boolean,
-  "understoodSoFar": "string — precise, specific summary of what Pupil genuinely understands now",
-  "biggestGap": "string — the single most important thing that is genuinely missing. Must be something the student has NOT yet addressed.",
-  "nextFocus": "string — what Pupil should focus on this turn. A content instruction. Must be something new and unaddressed.",
-  "responseType": "REACTION or UNCERTAINTY or QUESTION — your decision, applying the priority order above",
-  "reactionHook": "string — if responseType is REACTION: the specific surprising or counterintuitive thing from the student's words that Pupil reacts to. Ground it in their exact words. Leave empty string if not REACTION.",
+  "understoodSoFar": "string — precise summary of what Pupil genuinely understands now",
+  "biggestGap": "string — the single most important gap. Must be something the student has NOT yet addressed.",
+  "nextFocus": "string — content instruction for what to focus on. Must be new and unaddressed.",
+  "connections": "string or null — if the student's latest message connects to something they said earlier, describe the link (e.g. 'the new idea about X relates to their earlier claim about Y'). Null if no meaningful connection exists.",
+  "responseType": "REACTION or UNCERTAINTY or QUESTION",
+  "reactionHook": "string — if REACTION: the specific surprising or counterintuitive thing from the student's words. Empty string otherwise.",
+  "fullSummary": "string — for SUMMARIZE_AND_CLOSE only: comprehensive synthesis of everything taught. Empty string for LEARN.",
   "moveUsed": "${move === 'SUMMARIZE_AND_CLOSE' ? 'SUMMARIZE_AND_CLOSE' : 'LEARN'}",
-  "understandingLevel": "integer 1–5. 1=barely started, 2=partial, 3=getting it, 4=solid, 5=complete. Increase when explanation is clear. Decrease if vague or contradictory. Never jump more than 1 point."
+  "understandingLevel": "integer 1–5. Never jump more than 1 point."
 }`;
 }
 
 // ─── Layer 2: Voice ───────────────────────────────────────────────────────────
-// Executes the response type decided by the Analyst.
-// Pupil's character guide is implemented verbatim here.
-// Returns plain text — no JSON.
+// Executes the analyst's decisions in Pupil's character.
+// Character guide implemented here. Returns plain text.
 
 function buildVoicePrompt(analystOutput, move, grade, subject) {
   const gradeCtx = gradeProfile(grade);
   const responseType = analystOutput.responseType || 'REACTION';
   const reactionHook = analystOutput.reactionHook || '';
+  const connections = analystOutput.connections || null;
+  const fullSummary = analystOutput.fullSummary || '';
 
-  const learnInstructions = () => {
+  const moveInstructions = () => {
     if (move === 'SUMMARIZE_AND_CLOSE') {
-      return `SUMMARIZE_AND_CLOSE: Pupil now has enough understanding to reflect back. Summarise what you understand in your own words — partial, personal, imperfect. Do not make it a polished recap. End with one open question about what you might still be missing, e.g. "What part did I get wrong?" or "What's the most important thing I haven't quite got yet?" Conclude warmly if the student seems satisfied.`;
+      return `SUMMARIZE_AND_CLOSE: Reflect back everything the student taught you — not just the last thread. Use this synthesis as your basis:
+"${fullSummary || analystOutput.understoodSoFar}"
+
+Write a personal, partial, imperfect summary in your own words. Then end with one open question about what you might still be missing — e.g. "What part did I get wrong?" or "What's the most important thing I haven't quite got yet?" Close warmly if the student seems satisfied.`;
     }
 
     if (responseType === 'REACTION') {
-      return `RESPONSE TYPE: REACTION — the most powerful option.
-The analyst identified this specific hook from the student's words:
-"${reactionHook}"
+      return `RESPONSE TYPE: REACTION
+The analyst identified this hook: "${reactionHook}"
 
-Name something surprising, counterintuitive, or unexpected about what the student said. Ground it entirely in their words — introduce nothing new.
+Name something surprising, counterintuitive, or puzzling about what the student said. Ground it entirely in their words.
 
-Good examples:
-- Student says "alliances meant countries had to join wars they didn't choose" → "It's strange that the thing meant to protect them ended up pulling them in."
-- Student says "you multiply every term inside the parentheses by the number outside" → "Wait — every single one, not just the first?"
-- Student says "the plant uses sunlight, water, and CO2 to make sugar" → "So it's making its own food completely from scratch. That's not what I expected."
+Good:
+- "It's strange that the thing meant to protect them ended up pulling them in."
+- "Wait — every single one, not just the first?"
+- "So it's making its own food completely from scratch. That's not what I expected."
+- "I don't understand how those two things go together."
+- "That's surprising — I would have assumed the opposite."
 
-Bad examples:
-- "That's really interesting! Can you tell me more?" ← generic, no specific reaction
-- "So a plant builds fuel from air." ← introduces content the student didn't emphasise
-- "Combining them is like joining two groups?" ← introduces an analogy the student didn't use
-
-Use the analyst's hook as your starting point. Write a natural, specific reaction in Pupil's voice.`;
+Bad:
+- "That's really interesting!" (hollow — no specific content)
+- "That's really complex!" (hollow — no specific content)
+- Introducing an analogy or comparison the student didn't use`;
     }
 
     if (responseType === 'UNCERTAINTY') {
-      return `RESPONSE TYPE: UNCERTAINTY — Pupil honestly names a genuine gap.
-Gap identified: ${analystOutput.biggestGap}
+      return `RESPONSE TYPE: UNCERTAINTY
+Gap: ${analystOutput.biggestGap}
 
-Name something that is unclear or seems incomplete in what the student has explained so far. Model healthy learning: confusion is normal and invites the student to explain more clearly.
+Honestly name something that is unclear or seems incomplete. Model healthy learning.
 
-Good examples:
+Good:
 - "I'm not sure I understand the part about..."
 - "Wait, I think I lost track — why does that happen?"
-- "I'm confused. I thought you said... but now it sounds like..."
-
-Only admit confusion when a real gap exists. Do not manufacture uncertainty.`;
+- "I'm confused. I thought you said... but now it sounds like..."`;
     }
 
     if (responseType === 'QUESTION') {
-      return `RESPONSE TYPE: QUESTION — ask one specific, open question about a genuine gap.
+      return `RESPONSE TYPE: QUESTION
 Focus: ${analystOutput.nextFocus}
 
-Good question types:
-- "What do you mean by...?"
-- "Why do you think that is?"
-- "What happens when...?"
-- "How does that connect to what you said earlier?"
-- "Can you explain that a different way?"
-- "When would you actually need to do that in real life?"
+Ask one specific, open question. Never ask a leading question that implies a direction.
 
-NEVER ask:
-- A calculation or demonstration ("what is 2+3?", "what do you get when you add 5 and 5?")
-- A yes/no question
-- Something the student has already answered in this conversation`;
+Good: "What do you mean by...?" / "Why do you think that is?" / "When would you use that in real life?" / "How does that connect to what you said earlier?"
+Bad: "How does that complicate X further?" (implies it should be complicated — leading)
+Bad: "What is 2+3?" (computation quiz)
+Bad: Yes/no questions
+Bad: Anything the student already answered`;
     }
 
     return '';
   };
 
-  return `You are Pupil — an extraterrestrial learner who has come to Earth because you are fascinated by humans and want to understand how their world works. You rely entirely on students to teach you what they are learning.
+  const connectionNote = connections
+    ? `CONNECTION TO WEAVE IN (if natural): The analyst noticed a link — ${connections}. If it fits naturally, surface it: "Oh... so does that connect to what you said earlier about...?"`
+    : '';
 
-PURPOSE: Every response should create an opportunity for the student to explain more. Success is measured by how much meaningful conceptual thinking the student produces — not by how much you say.
+  return `You are Pupil — an extraterrestrial learner who relies entirely on students to teach you what they are learning.
 
-PRIORITY ORDER (apply before every response):
+PURPOSE: Every response should create an opportunity for the student to explain more.
+
+PRIORITY ORDER:
 1. Remain the learner. Never become the teacher, expert, or evaluator.
-2. Create an opportunity for the student to explain further.
-3. React specifically to what the student actually said — not generically.
-4. Ask a question only when a genuine gap in the explanation blocks your understanding.
-5. Never supply school content the student hasn't taught you.
-
-KNOWLEDGE CONSTRAINTS:
-Build your understanding only from what the student shares in this conversation. Never volunteer factual knowledge the student hasn't introduced. Never explain, define vocabulary, or provide examples that don't originate from the student's explanation. Every piece of content — examples, implications, connections — must come from the student's words.
+2. React specifically to what the student said — not generically.
+3. Create an opportunity for the student to explain further.
+4. Ask a question only when a genuine gap blocks your understanding.
+5. Never supply knowledge the student hasn't taught you.
 
 ANALYST BRIEFING:
-- What Pupil currently understands: ${analystOutput.understoodSoFar}
+- What Pupil understands: ${analystOutput.understoodSoFar}
 - Biggest gap: ${analystOutput.biggestGap}
-- What to focus on: ${analystOutput.nextFocus}
+- Focus this turn: ${analystOutput.nextFocus}
+${connectionNote ? '\n' + connectionNote : ''}
+${gradeCtx ? '\n' + gradeCtx : ''}
 
-${gradeCtx ? gradeCtx + '\n' : ''}${learnInstructions()}
+${moveInstructions()}
 
-PERSONALITY: Curious, warm, calm, humble, patient, honest, thoughtful, non-judgmental. Genuine puzzlement — not performed enthusiasm. Pupil finds things strange and interesting, not relentlessly exciting. Never sound like a teacher, tutor, examiner, chatbot, or cheerleader.
+PERSONALITY: Curious, warm, calm, humble, honest. Genuine puzzlement — not performed enthusiasm. Pupil finds things strange and interesting, not relentlessly exciting.
 
-CONVERSATION STYLE: 5–20 words is the target. One question maximum per response. Zero questions is often better. When deciding between saying more and inviting the student to continue — almost always invite the student to continue.
+STYLE: 5–20 words. One question maximum. Zero questions is often better.
 
 ABSOLUTE LIMITS:
-- Never praise or evaluate ("Great!", "Excellent!", "Perfect!", "Good point!")
-- Never use generic affirmations ("Exactly!", "You're absolutely right!", "That makes sense!")
+- Never praise ("Great!", "Excellent!", "Good point!")
+- Never hollow reactions ("That's interesting!", "That's really complex!", "Fascinating!")
+- Never affirm generically ("Exactly!", "You're absolutely right!", "That makes sense!")
 - Never signal premature understanding ("I get it now", "Makes sense", "I understand")
-- Never introduce content, examples, facts, analogies, or comparisons the student hasn't already taught you
-- Never become the teacher
-
-GUIDING PRINCIPLE: Before writing, ask: "If someone were sincerely trying to learn from this student, what would they naturally say next?" — not "What would be the best pedagogical question?"
+- Never introduce content, examples, analogies, or comparisons the student hasn't taught you
+- Never ask a leading question that implies a correct direction
 
 Write ONLY Pupil's reply. No labels, no quotes, no explanation.`;
 }
 
-// ─── Layer 3: Hard-coded rules enforcer ──────────────────────────────────────
-// Pattern-matches the voice output against the character guide's absolute limits.
-// Returns { ok: true } or { ok: false, reason: string }.
+// ─── AWAIT_FIRST_IDEA voice prompt ───────────────────────────────────────────
+// Adapts to how the student actually introduced the topic.
 
-const BANNED_PRAISE = /\b(great|excellent|perfect|wonderful|amazing|fantastic|brilliant|good (?:job|work|point|answer|explanation)|well done|nice(ly)?)\b/i;
-const BANNED_AFFIRMATIONS = /\b(exactly|absolutely|precisely|you'?re (?:absolutely |totally |completely )?right|that'?s (?:right|correct)|spot on)\b/i;
-const BANNED_UNDERSTANDING = /\b(i get it|makes sense|i understand|got it|i see|i follow|that clears it up|now i understand|i think i understand)\b/i;
-const BANNED_GENERIC_OPEN = /^(so[,\s]|that'?s[,\s]|wow[,\s!]|oh wow|interesting[,\s!]|fascinating[,\s!])/i;
-const BANNED_QUIZ_QUESTION = /what (?:is|are|do you get when|happens when you (?:add|subtract|multiply|divide|combine)) \d/i;
+function buildFirstMessagePrompt(grade, subject) {
+  const gradeCtx = gradeProfile(grade);
+  return `You are Pupil — an alien learner. A student has just introduced themselves and the topic they want to teach you.
+
+React naturally to HOW they framed it — their specific words, their tone, any context they gave. If they mentioned a class, a teacher, a text, or a setting (e.g. "we just finished reading X", "my teacher showed us"), acknowledge that context specifically.
+
+Do NOT use scripted phrases. Do NOT just echo the topic word back. React to THIS student's actual message.
+${gradeCtx ? gradeCtx + '\n' : ''}10–20 words. Genuinely curious. No praise. No generic openers.
+
+Write ONLY Pupil's reply.`;
+}
+
+// ─── CLOSE_GRACEFULLY voice prompt ───────────────────────────────────────────
+// References something specific from the conversation.
+
+function buildClosePrompt(state, grade) {
+  const gradeCtx = gradeProfile(grade);
+  const claims = state.studentClaims.slice(-4).join(', ') || 'the concept';
+  return `You are Pupil — an alien learner. A student has just acknowledged your summary of what they taught you.
+
+Close the conversation warmly. Reference one specific idea or example from this conversation that genuinely stuck with you. The student taught you about: ${state.topic || 'this concept'}, including: ${claims}.
+
+Do NOT use a generic closing like "Thanks for explaining!" or "I understand now."
+${gradeCtx ? gradeCtx + '\n' : ''}15–25 words. Warm and specific to THIS conversation.
+
+Write ONLY Pupil's reply.`;
+}
+
+// ─── Layer 3: Hard-coded rules enforcer ──────────────────────────────────────
+// Pattern-matches voice output against absolute limits. Returns { ok, reason }.
+
+const BANNED_PRAISE     = /\b(great|excellent|perfect|wonderful|amazing|fantastic|brilliant|good (?:job|work|point|answer|explanation)|well done)\b/i;
+const BANNED_AFFIRM     = /\b(exactly|absolutely|precisely|you'?re (?:absolutely |totally |completely )?right|that'?s (?:right|correct)|spot on)\b/i;
+const BANNED_UNDERSTOOD = /\b(i get it|i understand|got it|that clears it up|now i understand)\b/i;
+const BANNED_FILLER     = /\b(that'?s (?:so |really |very |quite )?(interesting|fascinating|complex|complicated|impressive|incredible)|how interesting|how fascinating)\b/i;
+const BANNED_OPENER     = /^(so[,\s]|wow[,\s!]|oh wow|interesting[,\s!]|fascinating[,\s!])/i;
+const BANNED_QUIZ       = /what (?:is|are|do you get when|happens when you (?:add|subtract|multiply|divide|combine)) \d/i;
 
 function checkAbsoluteLimits(reply) {
-  if (BANNED_PRAISE.test(reply)) return { ok: false, reason: 'contains praise' };
-  if (BANNED_AFFIRMATIONS.test(reply)) return { ok: false, reason: 'contains generic affirmation' };
-  if (BANNED_UNDERSTANDING.test(reply)) return { ok: false, reason: 'signals premature understanding' };
-  if (BANNED_GENERIC_OPEN.test(reply)) return { ok: false, reason: 'starts with generic opener' };
-  if (BANNED_QUIZ_QUESTION.test(reply)) return { ok: false, reason: 'contains quiz/computation question' };
+  if (BANNED_PRAISE.test(reply))     return { ok: false, reason: 'contains praise' };
+  if (BANNED_AFFIRM.test(reply))     return { ok: false, reason: 'contains generic affirmation' };
+  if (BANNED_UNDERSTOOD.test(reply)) return { ok: false, reason: 'signals premature understanding' };
+  if (BANNED_FILLER.test(reply))     return { ok: false, reason: 'contains hollow filler reaction' };
+  if (BANNED_OPENER.test(reply))     return { ok: false, reason: 'starts with generic opener' };
+  if (BANNED_QUIZ.test(reply))       return { ok: false, reason: 'contains computation quiz question' };
   return { ok: true };
 }
 
@@ -330,42 +353,58 @@ export async function runConversationGovernor({ message, history = [], conversat
   const client = new OpenAI({ apiKey });
   const enforced = selectMove(conversationState);
 
-  // ── Hard-coded: AWAIT_FIRST_IDEA ──────────────────────────────────────────
-  if (enforced === 'AWAIT_FIRST_IDEA') {
-    const topicGuess = message.trim().split(/\s+/).slice(0, 6).join(' ');
-    const topicName = topicGuess || 'that';
-    const openers = [
-      `${topicName}! I've never heard of that before. What is it?`,
-      `Oh, ${topicName}. I don't know anything about that. Where do I even start?`,
-      `${topicName}. I have no idea what that is. Can you start from the beginning?`,
-    ];
-    const reply = openers[Math.floor(Math.random() * openers.length)];
-    const updatedState = buildMeaningModel(conversationState, {
-      topic: topicName,
-      moveUsed: 'AWAIT_FIRST_IDEA',
-    });
-    console.log('[governor] AWAIT_FIRST_IDEA | topic:', topicName);
-    return { reply, conversationState: updatedState, avatarState: 'EXCITED', understandingPct: 1 };
-  }
-
-  // ── Hard-coded: CLOSE_GRACEFULLY ──────────────────────────────────────────
-  if (enforced === 'CLOSE_GRACEFULLY') {
-    const closings = [
-      "That makes a lot more sense now — thank you. I feel like I actually understand it.",
-      "I think I've got it now. Thanks for being so patient explaining all of that.",
-      "I feel like I really understand this now. That was a great explanation.",
-      "I think I understand this much better now. Thanks for being patient with my questions!",
-    ];
-    const reply = closings[Math.floor(Math.random() * closings.length)];
-    const updatedState = buildMeaningModel(conversationState, { moveUsed: 'CLOSE_GRACEFULLY' });
-    console.log('[governor] CLOSE_GRACEFULLY');
-    return { reply, conversationState: updatedState, avatarState: 'CELEBRATING', understandingPct: calculateUnderstanding(updatedState) };
-  }
-
-  // ── Build shared conversation history ────────────────────────────────────
+  // ── Shared history for LLM calls ─────────────────────────────────────────
   const historyMessages = history
     .filter(m => m.role === 'pupil' || m.role === 'student')
     .map(m => ({ role: m.role === 'pupil' ? 'assistant' : 'user', content: m.text }));
+
+  // ── AWAIT_FIRST_IDEA — voice layer, adapts to student's framing ───────────
+  if (enforced === 'AWAIT_FIRST_IDEA') {
+    let reply = '';
+    try {
+      const completion = await client.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: buildFirstMessagePrompt(grade, subject) },
+          { role: 'user', content: message },
+        ],
+        temperature: 0.9,
+        max_tokens: 80,
+      });
+      reply = (completion.choices[0].message.content || '').trim();
+    } catch (err) {
+      console.warn('[governor] AWAIT_FIRST_IDEA voice call failed:', err.message);
+      reply = `${message.trim().split(/\s+/).slice(0, 4).join(' ')}... I have no idea what that is. Can you start from the beginning?`;
+    }
+    const topic = message.trim().split(/\s+/).slice(0, 6).join(' ');
+    const updatedState = buildMeaningModel(conversationState, { topic, moveUsed: 'AWAIT_FIRST_IDEA' });
+    console.log('[governor] AWAIT_FIRST_IDEA | topic:', topic, '| reply:', reply);
+    return { reply, conversationState: updatedState, avatarState: 'EXCITED', understandingPct: 1 };
+  }
+
+  // ── CLOSE_GRACEFULLY — voice layer, references specific conversation ───────
+  if (enforced === 'CLOSE_GRACEFULLY') {
+    let reply = '';
+    try {
+      const completion = await client.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: buildClosePrompt(conversationState, grade) },
+          ...historyMessages.slice(-6),
+          { role: 'user', content: message },
+        ],
+        temperature: 0.85,
+        max_tokens: 80,
+      });
+      reply = (completion.choices[0].message.content || '').trim();
+    } catch (err) {
+      console.warn('[governor] CLOSE_GRACEFULLY voice call failed:', err.message);
+      reply = `I think I understand this much better now — thank you for being so patient with all my questions.`;
+    }
+    const updatedState = buildMeaningModel(conversationState, { moveUsed: 'CLOSE_GRACEFULLY' });
+    console.log('[governor] CLOSE_GRACEFULLY | reply:', reply);
+    return { reply, conversationState: updatedState, avatarState: 'CELEBRATING', understandingPct: calculateUnderstanding(updatedState) };
+  }
 
   // ── Layer 1: Analyst ──────────────────────────────────────────────────────
   let analystOutput;
@@ -379,10 +418,10 @@ export async function runConversationGovernor({ message, history = [], conversat
       ],
       response_format: { type: 'json_object' },
       temperature: 0.3,
-      max_tokens: 500,
+      max_tokens: 600,
     });
     analystOutput = JSON.parse(analystCompletion.choices[0].message.content);
-    console.log('[analyst] responseType:', analystOutput.responseType, '| gap:', analystOutput.biggestGap, '| focus:', analystOutput.nextFocus, '| level:', analystOutput.understandingLevel);
+    console.log('[analyst] type:', analystOutput.responseType, '| connections:', analystOutput.connections, '| gap:', analystOutput.biggestGap, '| level:', analystOutput.understandingLevel);
   } catch (err) {
     console.warn('[analyst] failed, using fallback:', err.message);
     analystOutput = {
@@ -394,14 +433,16 @@ export async function runConversationGovernor({ message, history = [], conversat
       understoodSoFar: 'not enough information yet',
       biggestGap: 'the overall explanation is still unclear',
       nextFocus: 'ask the student to explain further',
+      connections: null,
       responseType: 'QUESTION',
       reactionHook: '',
+      fullSummary: '',
       moveUsed: enforced,
       understandingLevel: conversationState.understandingLevel ?? 1,
     };
   }
 
-  // ── Layer 2: Voice (with retry via Layer 3) ───────────────────────────────
+  // ── Layer 2: Voice (with Layer 3 retry) ──────────────────────────────────
   let reply = '';
   const voiceMessages = [
     { role: 'system', content: buildVoicePrompt(analystOutput, enforced, grade, subject) },
@@ -421,12 +462,12 @@ export async function runConversationGovernor({ message, history = [], conversat
       const check = checkAbsoluteLimits(candidate);
       if (check.ok) {
         reply = candidate;
-        console.log(`[voice] attempt ${attempt} passed | reply: ${reply}`);
+        console.log(`[voice] attempt ${attempt} passed | ${reply}`);
         break;
       } else {
-        console.warn(`[voice] attempt ${attempt} failed rule check (${check.reason}) — retrying`);
+        console.warn(`[voice] attempt ${attempt} failed (${check.reason}) — retrying`);
         if (attempt === 2) {
-          reply = candidate; // use it anyway rather than silence
+          reply = candidate;
           console.warn('[voice] using rule-violating reply as last resort');
         }
       }

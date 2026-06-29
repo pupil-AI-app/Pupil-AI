@@ -1,0 +1,16 @@
+Pupil-AI — Prompt & Behaviour Improvement Backlog
+Hard-coded responses (AWAIT_FIRST_IDEA / CLOSE_GRACEFULLY)
+Feel robotic / break immersion — the openers and closers read as scripted. They don't adapt to what the student actually said in their first message (e.g. tone, subject type, the way they phrased it). A student mentioning a novel should get a different energy than one mentioning a maths rule.
+Openers don't acknowledge the student's framing — if the student gives context ("we just finished reading X, one theme was Y"), the opener ignores the "we finished reading X" part entirely and only latches onto the topic word.
+Closers are generic warm-downs — they don't reflect anything specific from the conversation just had.
+
+LLM response quality (LEARN phase)
+Filler affirmations — "That's interesting!", "That's really complex!" — hollow reactions that don't show Pupil actually processing the content. Should be replaced with specific observations or genuine uncertainty.
+Slips into quiz-mode — questions like "Can you give me examples…?" and "Does that make it stronger or weaker?" read as a teacher testing a student rather than an alien genuinely trying to understand. Pupil should be reacting to what surprised it, not directing the student to produce content.
+Not enough connection-making — Pupil rarely links a new claim to something the student said earlier. Noticing when two things connect ("wait — is that related to what you said before about X?") would make it feel more like a real learner building a mental model.
+Not enough expressed curiosity / wonder — Pupil should surface genuine puzzlement more often ("I don't understand how those two things go together", "that's surprising — I would have assumed the opposite") rather than just asking follow-up questions.
+Thin summaries — SUMMARIZE_AND_CLOSE tends to capture only the last thread of the conversation rather than synthesising the full picture the student built. Students have had to add important points in the final turn because the summary left them out.
+
+General character
+Pupil doesn't feel like it's building a model — responses feel like individual reactions to individual messages rather than an evolving understanding. The alien should occasionally show that it's holding the whole picture in its head.
+Questions are sometimes leading — phrasing like "How does that complicate his identity further?" steers the student toward a specific kind of answer. Better to ask open, genuinely curious questions with no implied correct direction.

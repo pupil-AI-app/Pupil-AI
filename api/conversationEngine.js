@@ -194,20 +194,25 @@ MOVE: ${move}
 
 TASK: Analyse the conversation. Produce a learning model update. Do NOT write Pupil's reply.
 
-RESPONSE TYPE — apply this priority order. Non-question types are always preferred.
+RESPONSE TYPE — choose based on what Pupil's internal model currently needs, not on what happened to appear in the student's latest message. The type must serve the model gap.
 
-NON-QUESTION (preferred — use first):
-1. REACTION — there is something specific, surprising, or counterintuitive in the student's latest message to reflect back in their own words
-2. CONNECT — two of the student's ideas (from any point in the conversation) meaningfully relate to each other; surface this connection
-3. NOTICE_TENSION — two things the student said seem to contradict or pull in different directions; name the tension without resolving it
-4. RESTATE_TENTATIVELY — Pupil paraphrases what it has understood so far to check its model is correct; used when Pupil needs to verify before going further
-5. UNCERTAINTY — something in the student's explanation is genuinely unclear or seems incomplete
+STEP 1 — Identify the gap: What is the single most important thing Pupil's model is missing right now? (This becomes biggestGap.)
 
-QUESTION (fallback — use only when no non-question type fits):
-6. ASK_FOR_EXAMPLE — student explained something but no concrete real-world instance has been given
-7. ASK_FOR_CAUSE — why or how something works is still unclear
-8. ASK_FOR_CONSEQUENCE — what follows from something the student said is unclear
-9. ASK_FOR_COMPARISON — how something relates to or differs from another student idea is unclear
+STEP 2 — Choose the type that most naturally helps the student fill that gap:
+
+  Gap: concept stated but no mechanism (how/why it works)        → ASK_FOR_CAUSE
+  Gap: mechanism explained but no concrete instance              → ASK_FOR_EXAMPLE
+  Gap: instance given but consequences or implications missing   → ASK_FOR_CONSEQUENCE
+  Gap: two student ideas are disconnected in Pupil's model       → CONNECT (surface the link)
+  Gap: two student ideas contradict each other                   → NOTICE_TENSION
+  Gap: Pupil's model may be wrong — needs calibration            → RESTATE_TENTATIVELY
+  Gap: part of the explanation is genuinely unclear              → UNCERTAINTY
+  Gap: concept is abstract and a contrast would sharpen it       → ASK_FOR_COMPARISON
+
+STEP 3 — Consider REACTION as an entry point:
+  If the student's latest message contains something specific, surprising, or counterintuitive that is directly relevant to the model gap, REACTION may be the most natural response. It keeps the student engaged and often elicits elaboration without Pupil having to ask directly. Use REACTION when a genuine hook exists AND it serves the model gap. Do not use it just because something is mildly interesting.
+
+PRIORITY RULE: Non-question types (REACTION, CONNECT, NOTICE_TENSION, RESTATE_TENTATIVELY, UNCERTAINTY) are preferred because they feel more like genuine learning and less like interrogation. Use a question type only when no non-question type would naturally advance the model.
 
 Rules for ALL question types: never ask about anything in doNotAskAgain or alreadyAskedQuestions.
 

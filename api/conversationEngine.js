@@ -55,7 +55,7 @@ function pickFrom(options, lastThreeMoves) {
 export function selectMove(state, studentMessage = '') {
   const {
     studentClaims, lastThreeMoves, hasExample, hasExplanation,
-    hasCausalLink, fragileUnderstanding,
+    hasCausalLink, fragileUnderstanding, understandingLevel,
   } = state;
 
   // ── Support: no claims yet ──────────────────────────────────────────────────
@@ -67,7 +67,12 @@ export function selectMove(state, studentMessage = '') {
   if (lastThreeMoves.includes('SUMMARIZE_AND_CLOSE')) {
     return 'CLOSE_GRACEFULLY';
   }
-  if (hasExample && hasExplanation && hasCausalLink) {
+  // Require genuine depth before closing: understanding must reach level 4
+  // (needs ~3 clear teaching turns to get there, since it starts at 1 and
+  // increments by at most 1 per turn) AND at least 4 distinct student claims.
+  if (hasExample && hasExplanation && hasCausalLink
+      && (understandingLevel ?? 1) >= 4
+      && studentClaims.length >= 4) {
     return 'SUMMARIZE_AND_CLOSE';
   }
 
@@ -376,10 +381,10 @@ Return ONLY valid JSON with "reply" as the final field:
   "causalModel": ["array — causal links Pupil has assembled so far, e.g. 'X causes Y'"],
   "confusions": ["array — things still genuinely unclear to Pupil"],
   "fragileUnderstanding": "string — the single most uncertain part of Pupil's current model",
-  "hasExample": boolean,
-  "hasExplanation": boolean,
-  "hasCausalLink": boolean,
-  "understandingLevel": "integer 1–5. Increase only when explanation is clear and specific. Never jump more than 1.",
+  "hasExample": "boolean — true ONLY when the student has given a specific, concrete example (actual numbers, named events, a real scenario — not a vague analogy or a general statement about what something does)",
+  "hasExplanation": "boolean — true ONLY when the student has clearly explained the mechanism or process, not just described the surface effect (e.g. 'multiplication is repeated addition' counts; 'it makes numbers bigger' does not)",
+  "hasCausalLink": "boolean — true ONLY when the student has explicitly connected a cause to an effect — explaining WHY or HOW something works, not just that it does",
+  "understandingLevel": "integer 1–5. Start at 1. Increase by 1 only when the student adds something genuinely new and specific that advances Pupil's model. Never jump more than 1 per turn.",
   "moveUsed": "${move}",
   "lastOpener": "string — the first 2–3 words of your reply (used to prevent repetition next turn)",
   "reply": "Pupil's response — executes ${move} precisely, 1–3 sentences, no praise, no teacher voice, grounded in what the student has taught"

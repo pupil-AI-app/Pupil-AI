@@ -510,25 +510,36 @@ export async function runConversationGovernor({ message, history = [], conversat
   // ── AWAIT_FIRST_IDEA ─────────────────────────────────────────────────────
   if (enforced === 'AWAIT_FIRST_IDEA') {
     let reply = '';
-    try {
-      const completion = await client.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: buildFirstMessagePrompt(grade, subject) },
-          { role: 'user', content: message },
-        ],
-        temperature: 0.9,
-        max_tokens: 80,
-      });
-      reply = (completion.choices[0].message.content || '').trim();
-    } catch (err) {
-      console.warn('[AWAIT_FIRST_IDEA] failed:', err.message);
-      reply = `I have no idea what that is. Can you start from the very beginning?`;
+    const firstMsgPrompt = buildFirstMessagePrompt(grade, subject);
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const completion = await client.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [
+            { role: 'system', content: firstMsgPrompt },
+            { role: 'user', content: message },
+          ],
+          temperature: attempt === 1 ? 0.9 : 0.95,
+          max_tokens: 80,
+        });
+        const candidate = (completion.choices[0].message.content || '').trim();
+        const check = checkAbsoluteLimits(candidate, { studentMessage: message });
+        if (check.ok) {
+          reply = candidate;
+          console.log(`[AWAIT_FIRST_IDEA] attempt ${attempt} passed | ${reply}`);
+          break;
+        } else {
+          console.warn(`[AWAIT_FIRST_IDEA] attempt ${attempt} failed (${check.reason}) — retrying`);
+          if (attempt === 2) {
+            reply = candidate;
+            console.warn('[AWAIT_FIRST_IDEA] using rule-violating reply as last resort');
+          }
+        }
+      } catch (err) {
+        console.warn(`[AWAIT_FIRST_IDEA] attempt ${attempt} error:`, err.message);
+      }
     }
-
-    // Apply enforcer to opener too (single attempt — no retry)
-    const check = checkAbsoluteLimits(reply);
-    if (!check.ok) console.warn('[AWAIT_FIRST_IDEA] enforcer flag (no retry):', check.reason);
+    if (!reply) reply = `I have no idea what that is. Can you start from the very beginning?`;
 
     // Store full message as provisional topic; analyst will refine on next turn
     const provisionalTopic = message.trim().slice(0, 120);

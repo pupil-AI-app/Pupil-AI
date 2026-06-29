@@ -29,7 +29,7 @@ export default async function handler(req, res) {
       grade,
       subject,
     });
-    return res.status(200).json({ reply, conversationState: updatedState, avatarState, understandingPct });
+    return res.status(200).json({ reply, conversationState: updatedState, avatarState, understandingPct, _model: 'gpt-4o' });
   } catch (err) {
     console.error('[chat] error:', err.message);
     return res.status(500).json({ reply: "I'm having trouble hearing that. Can you try again?" });

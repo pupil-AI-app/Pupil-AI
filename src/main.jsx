@@ -260,6 +260,7 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
       const reply = data.reply && data.reply.trim()
         ? data.reply.trim()
         : "I'm having trouble hearing that. Can you try again?";
+      console.log('[Pupil-AI] model used this turn:', data._model);
       if (data.conversationState) setConversationState(data.conversationState);
       if (data.avatarState) setAvatarState(data.avatarState);
       if (data.understandingPct !== undefined) setUnderstandingPct(data.understandingPct);

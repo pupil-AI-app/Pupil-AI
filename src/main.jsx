@@ -85,17 +85,12 @@ function TriskelionIcon() {
   );
 }
 
-function Landing({ onStart }) {
-  const [input, setInput] = useState('');
-
-  function handleSubmit() {
-    onStart();
-  }
-
+function Landing({ onStart, onHistory }) {
   return (
     <main className="landing-screen">
-      <nav className="landing-nav">
+      <nav className="landing-nav" style={{ justifyContent: 'space-between' }}>
         <span className="landing-brand">Pupil-AI</span>
+        <button className="ghost history-nav-btn" onClick={onHistory}>Past chats</button>
       </nav>
 
       <div className="space-art-wrap">
@@ -105,7 +100,7 @@ function Landing({ onStart }) {
       <div className="landing-center">
         <img src="/ufo-raw.png" alt="Pupil's ship" className="ufo-img" style={{ width: 180 }} />
         <p className="landing-tagline">What can you teach me today?</p>
-        <button className="landing-start-btn" onClick={handleSubmit}>
+        <button className="landing-start-btn" onClick={onStart}>
           Start a chat
         </button>
       </div>
@@ -208,6 +203,23 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
   const [reportLoading, setReportLoading] = useState(false);
   const [sessionStartTime] = useState(() => Date.now());
   const [lastModel, setLastModel] = useState(null);
+  const [saved, setSaved] = useState(false);
+
+  React.useEffect(() => {
+    if (!conversationComplete || saved) return;
+    setSaved(true);
+    fetch('/api/conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic: conversationState?.topic || topic || null,
+        grade,
+        subject,
+        messages,
+        understandingPct,
+      }),
+    }).catch(() => {});
+  }, [conversationComplete]);
 
   async function sendToTeacher() {
     setReportLoading(true);
@@ -428,6 +440,82 @@ function TeacherReport({ data, onBack }) {
   );
 }
 
+function formatDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function formatTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function ChatHistory({ onBack }) {
+  const [rows, setRows] = useState(null);
+  const [expanded, setExpanded] = useState(null);
+  const [detail, setDetail] = useState({});
+
+  React.useEffect(() => {
+    fetch('/api/conversations')
+      .then(r => r.json())
+      .then(setRows)
+      .catch(() => setRows([]));
+  }, []);
+
+  async function toggle(id) {
+    if (expanded === id) { setExpanded(null); return; }
+    setExpanded(id);
+    if (!detail[id]) {
+      const r = await fetch(`/api/conversations/${id}`);
+      const d = await r.json();
+      setDetail(prev => ({ ...prev, [id]: d }));
+    }
+  }
+
+  return (
+    <main className="landing-screen">
+      <nav className="landing-nav" style={{ justifyContent: 'space-between' }}>
+        <button className="ghost" onClick={onBack}>← Back</button>
+        <span className="landing-brand">Pupil-AI</span>
+      </nav>
+      <div className="history-wrap">
+        <h2 className="history-title">Saved Chats</h2>
+        {rows === null && <p className="history-empty">Loading…</p>}
+        {rows !== null && rows.length === 0 && <p className="history-empty">No chats saved yet. Conversations are saved automatically when they finish.</p>}
+        {rows !== null && rows.length > 0 && (
+          <ul className="history-list">
+            {rows.map(row => (
+              <li key={row.id} className="history-item">
+                <button className="history-row" onClick={() => toggle(row.id)}>
+                  <span className="history-name">
+                    {formatDate(row.created_at)} · {formatTime(row.created_at)} · {row.topic || '(unknown topic)'}
+                  </span>
+                  <span className="history-meta">
+                    {[row.subject, row.grade ? `Grade ${row.grade}` : null, row.message_count ? `${row.message_count} messages` : null].filter(Boolean).join(' · ')}
+                  </span>
+                  <span className="history-chevron">{expanded === row.id ? '▲' : '▼'}</span>
+                </button>
+                {expanded === row.id && (
+                  <div className="history-transcript">
+                    {detail[row.id]
+                      ? detail[row.id].messages.map((m, i) => (
+                          <div key={i} className={`history-msg history-msg-${m.role}`}>
+                            <span className="history-msg-label">{m.role === 'pupil' ? 'Pupil' : 'Student'}</span>
+                            <span className="history-msg-text">{m.text}</span>
+                          </div>
+                        ))
+                      : <p className="history-empty">Loading transcript…</p>
+                    }
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </main>
+  );
+}
+
 function App() {
   const [screen, setScreen] = useState('landing');
   const [grade, setGrade] = useState(null);
@@ -447,7 +535,8 @@ function App() {
     />
   );
   if (screen === 'report') return <TeacherReport data={reportData} onBack={() => setScreen('landing')} />;
-  return <Landing onStart={() => setScreen('grade')} />;
+  if (screen === 'history') return <ChatHistory onBack={() => setScreen('landing')} />;
+  return <Landing onStart={() => setScreen('grade')} onHistory={() => setScreen('history')} />;
 }
 
 createRoot(document.getElementById('root')).render(<App />);

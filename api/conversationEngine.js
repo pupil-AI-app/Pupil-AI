@@ -93,9 +93,11 @@ export function selectMove(state, studentMessage = '') {
   }
 
   // ── Support: low-information agreement — student confirms but adds nothing ──
-  // These are prime moments for a plausible mistake: Pupil uses what it has.
+  // MAKE_PLAUSIBLE_MISTAKE and APPLY_TO_NEW_CASE are the right moves here —
+  // CREATE_TINY_EXPERIMENT is excluded because it tends to become a teacher
+  // demonstration when Pupil already has a correct model.
   if (/^(yes|yeah|yep|yup|mhm|mm-?hmm|okay|ok|sure|right|correct|i guess|kind of|sort of|i think so|maybe|probably|i suppose|uh huh|true)\.?$/.test(msg)) {
-    return pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'APPLY_TO_NEW_CASE', 'CREATE_TINY_EXPERIMENT'], lastThreeMoves);
+    return pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'APPLY_TO_NEW_CASE'], lastThreeMoves);
   }
 
   // ── Active moves based on state ─────────────────────────────────────────────
@@ -299,14 +301,16 @@ Good examples:
 
 Name the relationship. Don't ask the student to name it for you.`,
 
-    CREATE_TINY_EXPERIMENT: `Build a small, specific scenario to test the idea. State the scenario and what you think happens — then invite the student to fix your conclusion.
+    CREATE_TINY_EXPERIMENT: `Build a small, specific scenario and state what you — Pupil — think should happen. Your prediction must be tentative or possibly wrong. The student must have something to evaluate and correct, not just confirm.
+
+CRITICAL: If Pupil's prediction is correct, the move has failed — it becomes a demonstration, not an experiment. Pupil should be testing an assumption that might not hold, or making an inference the student can push back on.
 
 Good examples (style only — never copy these verbatim, always invent your own scenario):
-• (AI chatbots) "Let me test this: if I type 'The dog chased the...' — a chatbot should guess the next word by finding what word most often follows that in its training data, without understanding dogs at all. Fix that if it's off."
-• (Macbeth) "Let me try something: if we removed every scene with the witches, by your logic Macbeth might still have the ambition — but he'd never act on it. Fix that if it's wrong."
-• (Multiplication) "Let me test this: if there are 5 rows of 4 chairs, I'd add 4 five times and land on 20 without counting every chair. Fix that if the groups idea doesn't work like that."
+• (AI chatbots) "Let me test this: if I type 'The dog chased the...' — the chatbot should just pick whatever word it has seen most after that phrase, even if it makes no sense for dogs. Fix that if it's off."
+• (Macbeth) "Let me try something: if we removed every scene with the witches, Macbeth might still have acted the same way — the ambition was already there. Fix that if it's wrong."
+• (Multiplication) "Let me test this: if multiplication is about groups, then 3 groups of 4 should give the same answer as 4 groups of 3 — the groups and the size are interchangeable. Fix that if groups don't work that way."
 
-State your scenario AND your expected outcome. End with a repair invitation ("Fix that if I'm wrong." / "Fix that if it doesn't work."). Do not end with a confident conclusion that presents the result as established fact.`,
+End with a repair invitation ("Fix that if I'm wrong." / "Fix that if it doesn't work."). Never present a worked calculation as the conclusion — that is teaching, not experimenting.`,
 
     REFLECT_ON_CHANGED_UNDERSTANDING: `Name what just shifted in your model because of what the student said. State the old assumption and the new one.
 
@@ -315,7 +319,7 @@ Good examples:
 • (Macbeth) "That changes the shape of things. I'd been thinking Macbeth had a plan from the start — but it sounds more like the witches gave him a goal and Lady Macbeth gave him a method."
 • (Multiplication) "Oh — so it's not that multiplication is always repeated addition. It's that repeated addition is one way to see what multiplication is doing. Those are different."
 
-Name the specific assumption that changed. Do not say "I understand now" or "that makes sense." Do not ask a question.`,
+Name the specific assumption that changed. Do not say "I understand now" or "that makes sense." Do not ask a question. End with a brief repair invitation so the conversation can continue: "Fix that if I'm still off." / "Tell me if that's not quite it."`,
 
     INVITE_REPAIR: `State your current model — possibly wrong — and invite the student to fix it. Use a repair statement, not a question.
 

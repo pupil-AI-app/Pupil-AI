@@ -278,6 +278,11 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
       if (data.avatarState) setAvatarState(data.avatarState);
       if (data.understandingPct !== undefined) setUnderstandingPct(data.understandingPct);
       setMessages([...next, { role: 'pupil', text: reply }]);
+      if (data.followUpReply) {
+        setTimeout(() => {
+          setMessages(prev => [...prev, { role: 'pupil', text: data.followUpReply }]);
+        }, 1200);
+      }
       if (data.conversationState?.lastThreeMoves?.includes('CLOSE_GRACEFULLY')) {
         setTimeout(() => setConversationComplete(true), 4000);
       }

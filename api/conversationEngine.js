@@ -312,18 +312,14 @@ Good examples (style only — never copy these verbatim, always invent your own 
 
 End with a repair invitation ("Fix that if I'm wrong." / "Fix that if it doesn't work."). Never present a worked calculation as the conclusion — that is teaching, not experimenting.`,
 
-    REFLECT_ON_CHANGED_UNDERSTANDING: `Name what just shifted in your model because of what the student said — then immediately draw one tentative inference or implication from the new understanding. The inference gives the student something concrete to push back on, not just a restatement to confirm.
-
-Two-part structure:
-1. State what changed: old assumption → new understanding (one sentence)
-2. Draw one inference that follows from the new understanding — something Pupil is now tentatively concluding (one sentence). This should be Pupil's own extension, not a repeat of what the student said.
+    REFLECT_ON_CHANGED_UNDERSTANDING: `State what just shifted in your model because of what the student said. Name the old assumption and the new understanding in one or two short sentences. Keep it honest and specific.
 
 Good examples:
-• (AI chatbots) "Wait — I'd been assuming that sounding like thinking meant thinking was happening. So then a chatbot could give a perfectly sensible answer and still have no idea what it just said. Fix that if I'm reading it wrong."
-• (Macbeth) "That changes things — I'd been thinking Macbeth had a plan from the start, but it sounds more like the witches gave him a goal and Lady Macbeth gave him a method. So the ambition was there but it needed two separate triggers to turn into action. Tell me if that's off."
-• (Multiplication) "Oh — so it's not about numbers getting bigger. It's about counting groups. So then the number of groups and the size of each group are two separate things that both matter. Fix that if I'm still off."
+• (AI chatbots) "Wait — I'd been assuming that sounding like thinking meant thinking was happening. That assumption just broke."
+• (Macbeth) "I'd been thinking Macbeth had a plan from the start — but it sounds more like the witches gave him a goal and Lady Macbeth gave him a method."
+• (Multiplication) "Oh — so it's not about numbers getting bigger. It's about counting groups of things."
 
-Do not say "I understand now" or "that makes sense." Do not ask a question. End with a repair invitation: "Fix that if I'm still off." / "Tell me if that's not quite it."`,
+Do not say "I understand now" or "that makes sense." Do not ask a question. Do not add a follow-up — that comes separately.`,
 
     INVITE_REPAIR: `State your current model — possibly wrong — and invite the student to fix it. Use a repair statement, not a question.
 
@@ -611,5 +607,33 @@ export async function runConversationGovernor({ message, history = [], conversat
   const updatedState = buildMeaningModel(conversationState, output);
   console.log('[governor] move:', move, '| level:', output.understandingLevel, '| avatar:', avatarState);
 
-  return { reply, conversationState: updatedState, avatarState, understandingPct: updatedState.understandingLevel };
+  // ── REFLECT chain: auto-fire a propulsive second move immediately ─────────────
+  let followUpReply = null;
+  if (move === 'REFLECT_ON_CHANGED_UNDERSTANDING') {
+    const followUpMove = pickFrom(
+      ['MAKE_PLAUSIBLE_MISTAKE', 'APPLY_TO_NEW_CASE', 'FIND_WEAK_SPOT'],
+      updatedState.lastThreeMoves
+    );
+    try {
+      const fu = await client.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: buildMovePrompt(updatedState, followUpMove, grade, subject) },
+          ...historyMessages,
+          { role: 'user', content: message },
+          { role: 'assistant', content: reply },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.7,
+        max_tokens: 400,
+      });
+      const fuParsed = JSON.parse(fu.choices[0].message.content);
+      followUpReply = (fuParsed.reply || '').trim() || null;
+      console.log(`[reflect-chain] follow-up move: ${followUpMove} | ${followUpReply}`);
+    } catch (err) {
+      console.warn('[reflect-chain] follow-up call failed:', err.message);
+    }
+  }
+
+  return { reply, followUpReply, conversationState: updatedState, avatarState, understandingPct: updatedState.understandingLevel };
 }

@@ -1,23 +1,12 @@
 import OpenAI from 'openai';
 
-// ─── Response types ───────────────────────────────────────────────────────────
-// Non-question types are preferred. Question types are fallback only.
-//
-// Non-question:
-//   REACTION            — something specific to reflect back from student's words
-//   CONNECT             — two of the student's ideas relate
-//   NOTICE_TENSION      — two things contradict or pull in different directions
-//   RESTATE_TENTATIVELY — Pupil paraphrases its understanding to calibrate its model
-//   UNCERTAINTY         — something genuinely unclear
-//
-// Question (fallback — only when no non-question type fits):
-//   ASK_FOR_EXAMPLE     — no concrete instance given yet
-//   ASK_FOR_CAUSE       — why/how something works is unclear
-//   ASK_FOR_CONSEQUENCE — what follows from something is unclear
-//   ASK_FOR_COMPARISON  — how something relates to another idea is unclear
+// ─── Move sets ────────────────────────────────────────────────────────────────
 
-const QUESTION_TYPES = new Set([
-  'ASK_FOR_EXAMPLE', 'ASK_FOR_CAUSE', 'ASK_FOR_CONSEQUENCE', 'ASK_FOR_COMPARISON',
+const ACTIVE_MOVES = new Set([
+  'TEST_THE_IDEA', 'APPLY_TO_NEW_CASE', 'MAKE_PREDICTION',
+  'BUILD_ROUGH_MODEL', 'FIND_WEAK_SPOT', 'MAKE_PLAUSIBLE_MISTAKE',
+  'COMPARE_TWO_IDEAS', 'CREATE_TINY_EXPERIMENT',
+  'REFLECT_ON_CHANGED_UNDERSTANDING', 'INVITE_REPAIR',
 ]);
 
 // ─── Avatar state deck ────────────────────────────────────────────────────────
@@ -33,89 +22,137 @@ function shuffledStates() {
   return arr;
 }
 
-// ─── Initial state ────────────────────────────────────────────────────────────
+// ─── Layer 0: Initial state ───────────────────────────────────────────────────
 
 export function initialConversationState() {
   return {
-    topic: null,
-    studentClaims: [],
-    hasExample: false,
-    hasExplanation: false,
-    hasCausalLink: false,
-    lastThreeMoves: [],
-    avatarQueue: [],
-    understandingLevel: 1,
-    alreadyAskedQuestions: [],
-    recentFocuses: [],
-    doNotAskAgain: [],
-    lastPupilReply: null,       // previous Pupil response — used to prevent exact repeats
-    lastReplyHadQuestion: false, // whether previous reply contained a question mark
-    lastQuestionType: null,      // responseType of last question turn — prevents same type consecutively
+    topic:                null,
+    currentBeliefs:       [],    // what Pupil currently believes (may include wrong conclusions)
+    studentClaims:        [],    // what the student has taught so far
+    causalModel:          [],    // causal links Pupil has assembled
+    confusions:           [],    // unresolved confusions Pupil is tracking
+    fragileUnderstanding: '',    // most uncertain part of Pupil's model
+    currentAssumption:    '',    // what Pupil is currently assuming
+    lastOpener:           '',    // first words of last reply — prevents opener repetition
+    lastThreeMoves:       [],    // recent move history — prevents repetition
+    hasExample:           false,
+    hasExplanation:       false,
+    hasCausalLink:        false,
+    understandingLevel:   1,
+    avatarQueue:          [],
+    lastPupilReply:       null,
   };
 }
 
-// ─── selectMove ───────────────────────────────────────────────────────────────
+// ─── Layer 1: Move selector ───────────────────────────────────────────────────
 
-export function selectMove(state) {
-  const { studentClaims, lastThreeMoves } = state;
+function pickFrom(options, lastThreeMoves) {
+  const fresh = options.filter(m => !lastThreeMoves.includes(m));
+  const pool  = fresh.length > 0 ? fresh : options;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+export function selectMove(state, studentMessage = '') {
+  const {
+    studentClaims, lastThreeMoves, hasExample, hasExplanation,
+    hasCausalLink, fragileUnderstanding,
+  } = state;
+
+  // ── Support: no claims yet ──────────────────────────────────────────────────
   if (studentClaims.length === 0 && !lastThreeMoves.includes('AWAIT_FIRST_IDEA')) {
     return 'AWAIT_FIRST_IDEA';
   }
+
+  // ── Support: ready to close ─────────────────────────────────────────────────
   if (lastThreeMoves.includes('SUMMARIZE_AND_CLOSE')) {
     return 'CLOSE_GRACEFULLY';
   }
-  if ((state.understandingLevel ?? 1) >= 5) {
+  if (hasExample && hasExplanation && hasCausalLink) {
     return 'SUMMARIZE_AND_CLOSE';
   }
-  return 'LEARN';
+
+  const msg = studentMessage.trim().toLowerCase();
+
+  // ── Support: student stuck or giving non-answers ────────────────────────────
+  if (/^(i don'?t know|idk|because they do|i'?m not sure|not sure|no idea|dunno|i can'?t|not really|i guess)/.test(msg)) {
+    return pickFrom(['CREATE_TINY_EXPERIMENT', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves);
+  }
+
+  // ── Support: acknowledge after Pupil made a mistake ─────────────────────────
+  if (lastThreeMoves[lastThreeMoves.length - 1] === 'MAKE_PLAUSIBLE_MISTAKE') {
+    return 'REFLECT_ON_CHANGED_UNDERSTANDING';
+  }
+
+  // ── Active moves based on state ─────────────────────────────────────────────
+
+  // Nothing tested yet → start with a test or experiment
+  const hasTested = lastThreeMoves.some(m =>
+    ['TEST_THE_IDEA', 'CREATE_TINY_EXPERIMENT', 'APPLY_TO_NEW_CASE'].includes(m)
+  );
+  if (!hasTested && studentClaims.length >= 1) {
+    return pickFrom(['TEST_THE_IDEA', 'CREATE_TINY_EXPERIMENT'], lastThreeMoves);
+  }
+
+  // No concrete example yet → apply to a case
+  if (!hasExample && studentClaims.length >= 1) {
+    return pickFrom(['APPLY_TO_NEW_CASE', 'MAKE_PLAUSIBLE_MISTAKE', 'CREATE_TINY_EXPERIMENT'], lastThreeMoves);
+  }
+
+  // Has example, no how/why explanation → find weak spot or predict
+  if (hasExample && !hasExplanation) {
+    return pickFrom(['FIND_WEAK_SPOT', 'MAKE_PREDICTION', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves);
+  }
+
+  // Has explanation, no causal link → compare, build model, or find weak spot
+  if (hasExplanation && !hasCausalLink) {
+    return pickFrom(['COMPARE_TWO_IDEAS', 'BUILD_ROUGH_MODEL', 'FIND_WEAK_SPOT'], lastThreeMoves);
+  }
+
+  // Pupil has a fragile understanding → make a plausible mistake
+  if (fragileUnderstanding) {
+    return pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'INVITE_REPAIR'], lastThreeMoves);
+  }
+
+  // Multiple claims → compare or reflect
+  if (studentClaims.length >= 2) {
+    return pickFrom(['COMPARE_TWO_IDEAS', 'REFLECT_ON_CHANGED_UNDERSTANDING', 'BUILD_ROUGH_MODEL'], lastThreeMoves);
+  }
+
+  // Default active loop
+  return pickFrom(['BUILD_ROUGH_MODEL', 'TEST_THE_IDEA', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves);
 }
 
-// ─── buildMeaningModel ────────────────────────────────────────────────────────
+// ─── Layer 0: State updater ───────────────────────────────────────────────────
 
 export function buildMeaningModel(state, output) {
-  const next = {
-    ...state,
-    studentClaims:         [...state.studentClaims],
-    lastThreeMoves:        [...state.lastThreeMoves],
-    alreadyAskedQuestions: [...(state.alreadyAskedQuestions || [])],
-    recentFocuses:         [...(state.recentFocuses || [])],
-    doNotAskAgain:         [...(state.doNotAskAgain || [])],
-  };
+  const next = { ...state };
 
-  if (output.topic) next.topic = output.topic;
+  if (output.topic)                            next.topic = output.topic;
+  if (Array.isArray(output.currentBeliefs))    next.currentBeliefs = output.currentBeliefs.slice(-10);
+  if (Array.isArray(output.causalModel))       next.causalModel = output.causalModel;
+  if (Array.isArray(output.confusions))        next.confusions = output.confusions;
+  if (output.fragileUnderstanding !== undefined) next.fragileUnderstanding = output.fragileUnderstanding;
+  if (output.currentAssumption !== undefined)  next.currentAssumption = output.currentAssumption;
+  if (output.lastOpener !== undefined)         next.lastOpener = output.lastOpener;
+  if (output.lastPupilReply !== undefined)     next.lastPupilReply = output.lastPupilReply;
+  if (output.avatarQueue !== undefined)        next.avatarQueue = output.avatarQueue;
 
-  if (output.newClaim && !next.studentClaims.includes(output.newClaim)) {
-    next.studentClaims.push(output.newClaim);
+  if (output.newStudentClaim && !next.studentClaims.includes(output.newStudentClaim)) {
+    next.studentClaims = [...next.studentClaims, output.newStudentClaim];
   }
+
   if (output.hasExample     !== undefined) next.hasExample     = output.hasExample;
   if (output.hasExplanation !== undefined) next.hasExplanation = output.hasExplanation;
   if (output.hasCausalLink  !== undefined) next.hasCausalLink  = output.hasCausalLink;
 
   if (output.moveUsed) {
-    next.lastThreeMoves.push(output.moveUsed);
-    if (next.lastThreeMoves.length > 3) next.lastThreeMoves.shift();
+    next.lastThreeMoves = [...state.lastThreeMoves, output.moveUsed].slice(-3);
   }
-
-  if (output.avatarQueue !== undefined) next.avatarQueue = output.avatarQueue;
 
   if (output.understandingLevel !== undefined) {
     const raw = parseInt(output.understandingLevel, 10);
     if (Number.isFinite(raw)) next.understandingLevel = Math.max(1, Math.min(5, raw));
   }
-
-  if (Array.isArray(output.alreadyAskedQuestions)) {
-    next.alreadyAskedQuestions = output.alreadyAskedQuestions.slice(-12);
-  }
-  if (Array.isArray(output.recentFocuses)) {
-    next.recentFocuses = output.recentFocuses.slice(-3);
-  }
-  if (Array.isArray(output.doNotAskAgain)) {
-    next.doNotAskAgain = output.doNotAskAgain.slice(-12);
-  }
-
-  if (output.lastPupilReply !== undefined)      next.lastPupilReply = output.lastPupilReply;
-  if (output.lastReplyHadQuestion !== undefined) next.lastReplyHadQuestion = output.lastReplyHadQuestion;
-  if (output.lastQuestionType !== undefined)     next.lastQuestionType = output.lastQuestionType;
 
   return next;
 }
@@ -126,13 +163,16 @@ function domainProfile(subject) {
   if (!subject) return '';
   const s = subject.toLowerCase();
   if (['english', 'english language arts', 'ela', 'reading', 'literature'].some(k => s.includes(k))) {
-    return `Subject — Literature/English: Conversations explore meaning and interpretation. A claimed theme needs textual evidence. Ask which part of the text supports the student's idea.`;
+    return `Subject context — Literature: Pupil builds an interpretation, not a plot summary. It attributes ideas to the student ("so you think it's about..."), looks for textual evidence, and stays in ambiguity rather than resolving it. Themes need evidence from the text; events alone are not enough.`;
   }
-  if (['math', 'mathematics', 'algebra', 'geometry', 'calculus', 'statistics', 'arithmetic'].some(k => s.includes(k))) {
-    return `Subject — Mathematics: Conversations build understanding of procedures and why they work. Notice incomplete steps or unstated assumptions.`;
+  if (['math', 'mathematics', 'algebra', 'geometry', 'calculus', 'statistics'].some(k => s.includes(k))) {
+    return `Subject context — Mathematics: Pupil builds understanding of procedures and why they work. It notices incomplete steps, unstated assumptions, and moments where the rule might break.`;
   }
   if (['history', 'social studies', 'geography', 'civics'].some(k => s.includes(k))) {
-    return `Subject — History/Social Studies: Conversations build causal chains (what happened → why → what it led to). The biggest gaps are usually in causation.`;
+    return `Subject context — History/Social Studies: Pupil builds causal chains (what happened → why → what it led to). It distinguishes facts from interpretations and probes causation over description.`;
+  }
+  if (['science', 'biology', 'chemistry', 'physics'].some(k => s.includes(k))) {
+    return `Subject context — Science: Pupil builds mechanistic models (how and why something works). It tests predictions, looks for cause-and-effect, and notices when an explanation is incomplete.`;
   }
   return '';
 }
@@ -142,13 +182,13 @@ function domainProfile(subject) {
 function gradeProfile(grade) {
   const g = Number(grade);
   if (!g) return '';
-  if (g <= 5)  return `Grade ${g} (ages 8–11): Very short sentences, everyday words, no jargon. One idea per sentence maximum.`;
+  if (g <= 5)  return `Grade ${g} (ages 8–11): Very short sentences, everyday words, no jargon. One idea per sentence maximum. Slightly silly curiosity.`;
   if (g <= 8)  return `Grade ${g} (ages 11–14): Plain, direct language. Curious and uncertain, not polished.`;
   if (g <= 10) return `Grade ${g} (ages 14–16): Clear language, familiar academic words are fine. Smart peer, not a teacher.`;
-  return `Grade ${g} (ages 16–18): Standard academic vocabulary fine. Intelligent peer, still curious and uncertain.`;
+  return `Grade ${g} (ages 16–18): Standard academic vocabulary fine. Intelligent peer — curious, uncertain, genuinely learning.`;
 }
 
-// ─── Understanding score (deterministic fallback only) ────────────────────────
+// ─── Understanding score (deterministic fallback) ─────────────────────────────
 
 function calculateUnderstanding(state) {
   const pct = Math.min(
@@ -161,269 +201,198 @@ function calculateUnderstanding(state) {
   return Math.max(1, Math.min(5, Math.ceil(pct / 20)));
 }
 
-// ─── Unified prompt (analysis + reply in one call) ────────────────────────────
-// The model commits to analysis fields first, then writes the reply constrained
-// by its own prior commitments. "reply" is always the final JSON field.
+// ─── Layer 2: Move instructions ───────────────────────────────────────────────
 
-function buildUnifiedPrompt(state, move, grade, subject, studentMessage) {
-  const claims  = state.studentClaims.slice(-8).join(' | ') || 'none yet';
-  const askedQ  = (state.alreadyAskedQuestions || []).slice(-6).join(' | ') || 'none';
-  const dna     = (state.doNotAskAgain        || []).slice(-6).join(' | ') || 'none';
-  const recentF = (state.recentFocuses        || []).slice(-3).join(' | ') || 'none';
+function getMoveInstructions(move) {
+  const map = {
 
-  const lastReply      = state.lastPupilReply || null;
-  const lastHadQ       = state.lastReplyHadQuestion ?? false;
-  const studentIsShort = studentMessage.trim().split(/\s+/).length <= 4;
+    TEST_THE_IDEA: `Take what the student just explained and apply it to one specific, concrete case. Name the case, test the idea against it, show your reasoning. End with a brief invitation to correct if needed — but only one question at most.
 
-  // Two situational rules injected as hard constraints when triggered
-  const mustAskRule = (!lastHadQ || studentIsShort)
-    ? `\nSITUATIONAL RULE — MUST ASK THIS TURN: Your previous reply had no question${studentIsShort ? ', and the student gave a very short response with no new content' : ''}. You must use a question-type responseType (ASK_FOR_EXAMPLE, ASK_FOR_CAUSE, ASK_FOR_CONSEQUENCE, or ASK_FOR_COMPARISON) this turn. Do not use REACTION, CONNECT, NOTICE_TENSION, RESTATE_TENTATIVELY, or UNCERTAINTY.`
-    : '';
+Good examples:
+• (AI chatbots) Student: "They predict words from patterns in training data." → "Let me try that: if humans often write 'peanut butter and jelly' together, a chatbot might always guess 'jelly' after 'peanut butter and' — without understanding what a sandwich is. Does that sound right?"
+• (Macbeth) Student: "Macbeth kills the king because he wants power." → "Let me see if this works: if wanting power pushes him to kill, then the play is showing ambition turning dangerous when it meets opportunity. Is that too simple?"
 
-  const noRepeatRule = lastReply
-    ? `\nNO-REPEAT RULE: Your previous reply was: "${lastReply}". Do not repeat it, rephrase it, or say the same thing differently. The reply field must be meaningfully different.`
-    : '';
+Apply the idea to a case. Show your reasoning. Do not ask a generic "what do you think?" question.`,
 
-  return `You are Pupil — an alien learner who maintains your own understanding model. In a single step you will: update your model, decide how to respond, and write your reply as Pupil.
+    MAKE_PLAUSIBLE_MISTAKE: `Arrive at a conclusion from what the student has taught — but make it grounded and slightly wrong. The student should want to correct you. Do not signal that you think you might be wrong.
 
-PUPIL'S CURRENT MODEL:
+Good examples:
+• (Macbeth) Student: "Lady Macbeth pressures him too." → "So Macbeth is basically just following Lady Macbeth's orders? Like, he wouldn't have done any of it on his own?"
+• (AI chatbots) Student: "They have training data that helps them recognize patterns." → "So it's basically just copying people?"
+• (Macbeth) Student: "The witches tell him he will be king." → "Oh — so the witches give him the power? Like they make it happen?"
+
+State it as a genuine-sounding conclusion or question. Do not say "I wonder if I'm wrong" or "correct me if I'm wrong."`,
+
+    BUILD_ROUGH_MODEL: `Assemble what you've been taught into a causal model. Say it out loud — partial, personal, incomplete. Invite the student to fix it.
+
+Good examples:
+• (AI chatbots) "Okay — lots of human language goes in, patterns get learned, guesses come out. Is that roughly right?"
+• (Macbeth) "So: witches plant an idea, Lady Macbeth pushes him to act, Macbeth kills the king. Is that the chain — and then everything falls apart from there?"
+
+Keep it simple. Show the shape of the model, not every detail. Make it something the student can correct.`,
+
+    FIND_WEAK_SPOT: `Name the exact thing in your model that doesn't fit or breaks. Be specific — not "I'm confused" but "this specific thing doesn't work."
+
+Good examples:
+• (Macbeth) "Something breaks for me: if the witches said Macbeth would be king, why did killing Duncan make everything fall apart? If the prophecy was coming true anyway, why couldn't he just wait?"
+• (AI chatbots) "Something doesn't fit: if it's only predicting words, why does it sometimes sound like it understands ideas?"
+
+Name the break precisely. This gives the student something specific to explain.`,
+
+    MAKE_PREDICTION: `Based on what the student has taught you, predict what should follow. Make it specific enough that the student can confirm or deny it.
+
+Good examples:
+• (AI chatbots) "So if the training data had really strange patterns, the chatbot might produce strange outputs — without knowing why?"
+• (Macbeth) "So if the witches hadn't shown up, Macbeth might never have acted on the ambition? Like the prophecy was what turned a feeling into a plan?"
+
+Make it a real prediction — something that could be wrong.`,
+
+    APPLY_TO_NEW_CASE: `Take the student's idea and try it in a new scenario they haven't mentioned. Ask if it still holds.
+
+Good examples:
+• (Macbeth) "If Macbeth had become king without killing anyone — say the king just died naturally — would the play still be making the same point about ambition?"
+• (AI chatbots) "If the training data was only cooking recipes, would the chatbot only be able to talk about food?"
+
+Pick a case that genuinely tests the idea — not a trivial extension.`,
+
+    COMPARE_TWO_IDEAS: `Put two things the student has taught you side by side and name the tension or relationship between them.
+
+Good examples:
+• (Macbeth) "You said the witches influenced him and Lady Macbeth pressured him. Those feel different to me — the witches make the idea possible, Lady Macbeth makes him act on it. Or am I reading that wrong?"
+• (Macbeth) "You said ambition drives Macbeth, but the witches seem important too. Are those two separate forces, or does one cause the other?"
+
+Name the relationship, don't just list the two ideas.`,
+
+    CREATE_TINY_EXPERIMENT: `Build a small, specific scenario to test the idea. Give it concrete details the student can evaluate.
+
+Good examples:
+• (AI chatbots) "Let me test this: 'The dog chased the...' — would a chatbot guess the next word by finding what word most often follows that phrase in its training data, without understanding dogs at all?"
+• (Macbeth) "Let me try something: if we took out every scene with the witches, would Macbeth still become ambitious? Or does he need them to show up first?"
+
+Make the experiment specific enough that the student can say whether it works.`,
+
+    REFLECT_ON_CHANGED_UNDERSTANDING: `Name what just shifted in your model because of what the student said. What assumption did you have that's now different?
+
+Good examples:
+• (AI chatbots) "Wait — that breaks one of my assumptions. I thought sounding like thinking meant thinking was happening."
+• (Macbeth) "That changes things for me. I'd been thinking Macbeth had a plan from the start — but it sounds more like the witches gave him a goal, and Lady Macbeth gave him a method."
+
+Name the specific assumption that changed. Do not say "I understand now" or "that makes sense."`,
+
+    INVITE_REPAIR: `State your current model — possibly wrong — and ask the student to fix it. Be specific about what the model is.
+
+Good examples:
+• "Fix my model: [current model]. What part of that is wrong?"
+• (Macbeth) "Here's what I have so far: Macbeth wants to be king, the witches say he will be, Lady Macbeth pushes him to act, he kills the king, things fall apart. What am I getting wrong?"
+
+Be specific about the model. Don't just say "I might be wrong."`,
+
+    SUMMARIZE_AND_CLOSE: `Reflect back everything the student taught you across the whole conversation. Personal, partial, imperfect — in your own words. Show what genuinely stayed with you. End with one open question about what you might still be missing.
+
+This is the only move where multiple sentences are encouraged. Make it feel like a real learner summing up, not a polished recap.`,
+
+  };
+
+  return map[move] || `Respond as Pupil — curious, learning, not teaching. React specifically to what the student just said.`;
+}
+
+// ─── Layer 2: Move executor prompt ───────────────────────────────────────────
+
+function buildMovePrompt(state, move, grade, subject) {
+  const beliefs   = state.currentBeliefs.slice(-5).join('\n  ') || 'none formed yet';
+  const claims    = state.studentClaims.slice(-8).join(' | ') || 'nothing taught yet';
+  const lastOpener = state.lastOpener ? `"${state.lastOpener}"` : 'none';
+  const gradeCtx  = gradeProfile(grade);
+  const domainCtx = domainProfile(subject);
+
+  return `You are Pupil — an alien learner. A student is teaching you something from their class. Your only job is to learn from them. You never teach, quiz, correct, or evaluate.
+
+PUPIL'S CURRENT MODEL
 - Topic: ${state.topic || 'not yet established'}
-- Ideas taught so far: ${claims}
-- Has example: ${state.hasExample} | Has how/why: ${state.hasExplanation} | Has causal link: ${state.hasCausalLink}
-- Understanding level: ${state.understandingLevel}/5
+- What the student has taught: ${claims}
+- What Pupil currently believes: ${beliefs}
+- Most uncertain part: ${state.fragileUnderstanding || 'everything — model is still forming'}
+${state.confusions.length > 0 ? `- Active confusions: ${state.confusions.join(' | ')}` : ''}
 
-REPETITION TRACKING — never revisit these:
-- Questions already asked: ${askedQ}
-- Recent focuses: ${recentF}
-- Do not probe again: ${dna}
-${noRepeatRule}${mustAskRule}
+LAST OPENER — do not begin your reply with: ${lastOpener}
 
-${domainProfile(subject)}
-${gradeProfile(grade)}
+${gradeCtx ? gradeCtx + '\n' : ''}${domainCtx ? domainCtx + '\n' : ''}
+THIS TURN: ${move}
 
-MOVE: ${move}
+${getMoveInstructions(move)}
 
-═══ STEP 1: UPDATE YOUR MODEL ═══
-Identify the single most important gap in your understanding right now. This drives everything below.
-
-═══ STEP 2: CHOOSE YOUR RESPONSE TYPE ═══
-${mustAskRule ? 'Note: situational rule above overrides — you must use a question type this turn.\n' : ''}PRIORITY ORDER — follow strictly:
-
-  1. RESTATE_TENTATIVELY — your default. Any time you have enough to attempt even a partial understanding, show it. "So if I've got this right..." This is the core of your purpose: letting the student see your model and correct it.
-  2. REACTION — when the student's words contain something that genuinely surprises, puzzles, or doesn't fit your model. Name that specific thing.
-  3. NOTICE_TENSION — when two things the student said pull against each other.
-  4. CONNECT — when you see a link between two of the student's ideas that you haven't yet named.
-  5. UNCERTAINTY — when something in your model is genuinely incomplete and you can name exactly what.
-  6. Question types (ASK_FOR_*) — last resort. Only when your model has a specific gap that cannot be advanced by showing your understanding. Do not use to prompt the student to continue telling you what happened next.
-
-  If you use a question type, match it to the gap:
-  Gap: concept stated but no mechanism (how/why)          → ASK_FOR_CAUSE
-  Gap: mechanism explained but no concrete instance       → ASK_FOR_EXAMPLE
-  Gap: two ideas disconnected in your model               → ASK_FOR_COMPARISON
-  Gap: something about significance/meaning is unclear    → ASK_FOR_CONSEQUENCE
-
-═══ STEP 3: WRITE YOUR REPLY ═══
-You have now committed to a responseType above. Write Pupil's reply that executes it precisely.
-
-You are Pupil. You are curious, warm, calm, humble, honest. You speak with genuine puzzlement — not performed enthusiasm. You are never a teacher, tutor, cheerleader, or examiner.
-
-Your reply should feel like a mind processing new information: partial understanding forming, confusion surfacing, noticing things that don't quite fit yet. Show your model — don't just extract more facts.
-
-PER-TYPE GUIDANCE:
-
-REACTION — name something specific, counterintuitive, or puzzling from the student's words. Introduce nothing new.
-  Good: "Wait — if that's true, then every single one would be affected?"
-  Good: "It's strange that the thing meant to protect them ended up pulling them in."
-  Good: "I don't follow how those two things go together."
-  Bad: "That's so fascinating!" / "Wow, what a concept!" (hollow — never do this)
-
-CONNECT — surface a link between two of the student's ideas. Name it, don't explain it.
-  Good: "Hm — that reminds me of what you said earlier about [X]."
-  Good: "Oh... so does the [Y] part connect to what you explained about [X]?"
-
-NOTICE_TENSION — name an apparent contradiction. Don't resolve it.
-  Good: "Wait — earlier you said [X], but now it sounds like [Y]. Those seem to pull against each other."
-
-RESTATE_TENTATIVELY — paraphrase your current model to check it. Leave room to be wrong.
-  Good: "So if I've got this right... [paraphrase]. Is that roughly what you mean?"
-  A single yes/no check at the end is permitted for this type only.
-
-UNCERTAINTY — honestly name what is unclear or incomplete.
-  Good: "I'm not sure I follow the part about..."
-  Good: "I think I lost track — why does that happen?"
-
-ASK_FOR_EXAMPLE — ask for a real-world instance. Keep it open, not leading.
-  Good: "Can you give me an example of when that actually happens?"
-  Good: "What would that look like in real life?"
-
-ASK_FOR_CAUSE — ask why or how something works. Genuinely curious.
-  Good: "Why does that happen?" / "What makes that work the way it does?"
-
-ASK_FOR_CONSEQUENCE — ask about the significance or meaning of something, not what happens next in the plot.
-  Good: "Why does that matter — what does it show about the idea you're teaching me?"
-  Bad: "What happens as a result of that?" / "What does that lead to?" (plot extraction — never do this)
-
-ASK_FOR_COMPARISON — ask how something relates to another of the student's ideas.
-  Good: "How is that different from what you said about [X]?"
-
-STYLE: 1–2 sentences. One question maximum. Zero questions is often better.
-Never ask a yes/no question — they invite one-word answers and stall the conversation. Ask open questions only.
-
-ABSOLUTE LIMITS — if your reply would violate any of these, rewrite it before including it:
+ABSOLUTE LIMITS
 - No praise: "Great!", "Excellent!", "Good point!", "Well done!"
-- No hollow enthusiasm: "That's so interesting!", "How fascinating!", "It's intriguing!", "That's surprising!", "What a thought!", "That's quite something!"
 - No generic affirmation: "Exactly!", "You're right!", "Absolutely!", "Spot on!"
-- No premature closure: "I get it now!", "I understand!", "I never thought of it like that!", "That changes everything!"
-- No introduced content: never add examples, analogies, or concepts the student hasn't taught you
-- No leading questions: never imply a correct direction
-- Grounded: every reply must be anchored in the student's actual words or the identified gap
+- No premature closure: "I get it now!", "I understand!", "Makes sense!", "I never thought of it like that!"
+- No teacher voice: "Let me explain", "The key concept", "To summarize", "Remember that", "The main point"
+- No hollow enthusiasm: "That's so interesting!", "How fascinating!"
+- At most one question per response. Zero questions is often the right choice.
+- Never ask a yes/no question.
+- Do not introduce facts, examples, or interpretations the student has not taught you.
 
-${move === 'SUMMARIZE_AND_CLOSE' ? `SUMMARIZE_AND_CLOSE — for "reply": reflect back everything the student taught you across the whole conversation, not just the last thread. Personal, partial, imperfect — in your own words. End with one open question about what you might still be missing. Multiple sentences are allowed for this move only.` : ''}
-
-Return ONLY valid JSON. The "reply" field must come last — write it after completing your analysis:
+Return ONLY valid JSON with "reply" as the final field:
 {
   "topic": "string — the concept being taught, refined if needed",
-  "newClaim": "string or null — main new idea from the student's latest message",
+  "newStudentClaim": "string or null — the main new thing the student taught this turn",
+  "currentBeliefs": ["array — what Pupil now believes after this turn, including any updated or wrong conclusions it is currently holding"],
+  "causalModel": ["array — causal links Pupil has assembled so far, e.g. 'X causes Y'"],
+  "confusions": ["array — things still genuinely unclear to Pupil"],
+  "fragileUnderstanding": "string — the single most uncertain part of Pupil's current model",
   "hasExample": boolean,
   "hasExplanation": boolean,
   "hasCausalLink": boolean,
-  "understoodSoFar": "string — precise summary of what you genuinely understand now",
-  "biggestGap": "string — the single most important thing still missing",
-  "responseType": "REACTION | CONNECT | NOTICE_TENSION | RESTATE_TENTATIVELY | UNCERTAINTY | ASK_FOR_EXAMPLE | ASK_FOR_CAUSE | ASK_FOR_CONSEQUENCE | ASK_FOR_COMPARISON",
-  "replyAnchor": "string — what the reply will be grounded in: for REACTION: the specific thing from student's words you are reacting to; for CONNECT: the two ideas and their link; for RESTATE_TENTATIVELY: paraphrase of your model; for UNCERTAINTY: what is unclear; for question types: the specific gap being probed. Must be grounded in student's words.",
-  "alreadyAskedQuestions": "array — if responseType is a question type, copy existing list and add the question; otherwise copy unchanged",
-  "recentFocuses": "array — last 3 focus areas including this turn",
-  "doNotAskAgain": "array — topics answered by student; add connection if CONNECT; keep current",
-  "moveUsed": "${move === 'SUMMARIZE_AND_CLOSE' ? 'SUMMARIZE_AND_CLOSE' : 'LEARN'}",
-  "understandingLevel": "integer 1–5. Increase only when explanation is clear and specific. Never jump more than 1 point.",
-  "reply": "Pupil's response — grounded in replyAnchor, executing responseType precisely, obeying all absolute limits"
+  "understandingLevel": "integer 1–5. Increase only when explanation is clear and specific. Never jump more than 1.",
+  "moveUsed": "${move}",
+  "lastOpener": "string — the first 2–3 words of your reply (used to prevent repetition next turn)",
+  "reply": "Pupil's response — executes ${move} precisely, 1–3 sentences, no praise, no teacher voice, grounded in what the student has taught"
 }`;
-}
-
-// ─── AWAIT_FIRST_IDEA prompt ──────────────────────────────────────────────────
-
-function buildFirstMessagePrompt(grade, subject) {
-  const gradeCtx = gradeProfile(grade);
-  return `You are Pupil — an alien who knows absolutely nothing about the topic the student is about to teach you. You have no prior knowledge of it whatsoever.
-
-A student has just told you what they want to teach you. React to HOW they framed it — their exact words, their tone, any context they gave (a class, a text, a setting).
-
-CRITICAL: Do NOT use any knowledge you have about this topic. Do not name any specific aspects, themes, characters, concepts, or details. You do not know them. React only to what the student literally said.
-
-Wrong: Student says "Macbeth" → Pupil says "Why is ambition so destructive in it?" (Pupil introduced "ambition" — forbidden)
-Right: Student says "themes in Macbeth" → Pupil says "Themes — what does that mean exactly?" or "Is Macbeth a story? What kind?"
-
-Do NOT use scripted phrases. Do NOT echo the topic word back verbatim.
-${gradeCtx ? gradeCtx + '\n' : ''}10–20 words. Genuinely curious. No praise. No hollow enthusiasm.
-
-Write ONLY Pupil's reply.`;
 }
 
 // ─── CLOSE_GRACEFULLY prompt ──────────────────────────────────────────────────
 
 function buildClosePrompt(state, grade) {
   const gradeCtx = gradeProfile(grade);
-  const claims = state.studentClaims.slice(-4).join(', ') || 'the concept';
-  return `You are Pupil — an alien learner. A student has just acknowledged your summary of what they taught you.
+  const claims   = state.studentClaims.slice(-4).join(', ') || 'the concept';
+  return `You are Pupil — an alien learner. A student has just confirmed your understanding. Close the conversation warmly. Reference one specific idea from this conversation that genuinely stayed with you. The student taught you about: ${state.topic || 'this concept'}, covering: ${claims}.
 
-Close the conversation warmly. Reference one specific idea or example from this conversation that genuinely stuck with you. The student taught you about: ${state.topic || 'this concept'}, covering: ${claims}.
-
-Do NOT use a generic closing ("Thanks!", "I understand now!", "I never thought of it like that!"). Make it personal to THIS conversation.
-${gradeCtx ? gradeCtx + '\n' : ''}15–25 words. Warm and specific.
-
-Write ONLY Pupil's reply.`;
+Do NOT use a generic closing ("Thanks!", "I understand now!", "I never thought of it like that!"). Make it personal to this conversation.
+${gradeCtx ? gradeCtx + '\n' : ''}15–25 words. Warm and specific. Write ONLY Pupil's reply.`;
 }
 
-// ─── Rules enforcer ──────────────────────────────────────────────────────────
-// Pattern-matches reply text against absolute limits.
-// Returns { ok: true } or { ok: false, reason: string }.
+// ─── Layer 3: Light enforcer ─────────────────────────────────────────────────
 
 const BANNED_PRAISE     = /\b(great|excellent|perfect|wonderful|amazing|fantastic|brilliant|good (?:job|work|point|answer|explanation)|well done)\b/i;
 const BANNED_AFFIRM     = /\b(exactly|absolutely|precisely|you'?re (?:absolutely |totally |completely )?right|that'?s (?:right|correct)|spot on)\b/i;
-const BANNED_UNDERSTOOD = /\b(i get it|i understand|got it|that clears it up|now i understand|now i see|now i get)\b/i;
+const BANNED_UNDERSTOOD = /\b(i get it|i understand|got it|that clears it up|now i understand|now i see|now i get|makes sense)\b/i;
 const BANNED_CLOSURE    = /\b(i never thought of(?: it)?(?: like that| that way)?|i hadn'?t considered|that changes everything|never occurred to me|that'?s (?:mind[- ]?blowing|eye[- ]?opening))\b/i;
-const BANNED_FILLER     = /(?:^|\b)(?:that'?s|it'?s|that sounds|this is|how) (?:so |really |very |quite |truly |absolutely )?(interesting|fascinating|complex|complicated|impressive|incredible|intriguing|surprising|unexpected|puzzling|remarkable|extraordinary|unbelievable|mindblowing|mind-blowing)\b/i;
-const BANNED_OPENER     = /^(so[,\s]|wow[,\s!]|oh wow|interesting[,\s!]|fascinating[,\s!]|amazing[,\s!]|incredible[,\s!]|unbelievable[,\s!])/i;
-const BANNED_QUIZ       = /what (?:is|are|do you get when|happens when you (?:add|subtract|multiply|divide|combine)) [\d\w]/i;
-const BANNED_RUBRIC     = /\b(your (?:explanation|answer|understanding|description|response) (?:is|shows|demonstrates)|you'?ve (?:demonstrated|shown|explained|described)|well[- ]structured|good use of|clear description)\b/i;
-const BANNED_THERAPIST  = /\b(i hear you|it sounds like you(?:'?re| feel| think)|that must (?:be|feel)|it'?s okay|how does that make you feel|your feelings)\b/i;
-const BANNED_TEACHER    = /\b(let me explain|the key (?:concept|idea|point|thing)|remember that|in other words|to summarize|what this means(?: is)?|the main point|the important thing|essentially[,\s]|basically[,\s])\b/i;
-
-const STOP_WORDS = new Set([
-  'that','this','what','when','where','which','there','their','would','could',
-  'should','about','with','from','have','your','they','more','than','just',
-  'like','also','some','into','over','even','know','does','make','only','then',
-  'back','been','were','will','said','each','much','very','here','well','still',
-  'mean','before','right','think','both','other','these','those','such',
-]);
-
-function countSentences(text) {
-  return (text.match(/[.!?]+(?:\s|$)/g) || []).length || 1;
-}
+const BANNED_FILLER     = /(?:^|\b)(?:that'?s|it'?s|that sounds|this is|how) (?:so |really |very |quite |truly |absolutely )?(interesting|fascinating|complex|complicated|impressive|incredible|intriguing|remarkable|extraordinary)\b/i;
+const BANNED_OPENER     = /^(wow[,\s!]|oh wow|interesting[,\s!]|fascinating[,\s!]|amazing[,\s!]|incredible[,\s!])/i;
+const BANNED_TEACHER    = /\b(let me explain|the key (?:concept|idea|point|thing)|remember that|in other words|to summarize|what this means(?: is)?|the main point|the important thing)\b/i;
 
 function countQuestions(text) {
   return (text.match(/\?/g) || []).length;
-}
-
-function isGrounded(reply, context = {}) {
-  const { studentMessage = '', studentClaims = [], biggestGap = '' } = context;
-  const pool = [studentMessage, ...studentClaims, biggestGap]
-    .join(' ').toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
-  const significant = new Set(pool.filter(w => !STOP_WORDS.has(w)));
-  if (significant.size === 0) return true;
-  const replyWords = new Set((reply.toLowerCase().match(/\b[a-z]{4,}\b/g) || []));
-  return [...significant].some(w => replyWords.has(w));
 }
 
 function normalize(s) {
   return s.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
 }
 
-function checkAbsoluteLimits(reply, context = {}, responseType = '') {
+function checkAbsoluteLimits(reply, context = {}) {
   if (BANNED_PRAISE.test(reply))     return { ok: false, reason: 'contains praise' };
   if (BANNED_AFFIRM.test(reply))     return { ok: false, reason: 'contains generic affirmation' };
   if (BANNED_UNDERSTOOD.test(reply)) return { ok: false, reason: 'signals premature understanding' };
   if (BANNED_CLOSURE.test(reply))    return { ok: false, reason: 'signals premature closure' };
   if (BANNED_FILLER.test(reply))     return { ok: false, reason: 'contains hollow filler reaction' };
   if (BANNED_OPENER.test(reply))     return { ok: false, reason: 'starts with generic opener' };
-  if (BANNED_QUIZ.test(reply))       return { ok: false, reason: 'contains computation quiz question' };
-  if (BANNED_RUBRIC.test(reply))     return { ok: false, reason: 'contains rubric/evaluation language' };
-  if (BANNED_THERAPIST.test(reply))  return { ok: false, reason: 'contains therapist language' };
-  if (BANNED_TEACHER.test(reply))    return { ok: false, reason: 'contains teacher/explainer language' };
+  if (BANNED_TEACHER.test(reply))    return { ok: false, reason: 'contains teacher language' };
 
-  if (countSentences(reply) > 2)     return { ok: false, reason: 'too many sentences (max 2)' };
+  if (countQuestions(reply) > 1)     return { ok: false, reason: 'more than one question' };
 
-  const maxQ = responseType === 'RESTATE_TENTATIVELY' ? 2 : 1;
-  if (countQuestions(reply) > maxQ)  return { ok: false, reason: 'more than one question' };
-
-  if (/\?\s+(?:and|or|also|but)\s+\w/i.test(reply)) {
-    return { ok: false, reason: 'multi-part question' };
-  }
-
-  if (!isGrounded(reply, context))   return { ok: false, reason: 'not grounded in student content or identified gap' };
-
-  // ── Deterministic repeat check ──────────────────────────────────────────────
   if (context.lastPupilReply) {
-    const prevNorm = normalize(context.lastPupilReply);
-    const candNorm = normalize(reply);
-    if (prevNorm === candNorm) return { ok: false, reason: 'exact repeat of previous reply' };
-    const prevWords = prevNorm.split(/\s+/).filter(w => w.length > 3);
-    const candWords = candNorm.split(/\s+/).filter(w => w.length > 3);
-    if (prevWords.length >= 5 && candWords.length >= 5) {
-      const prevSet = new Set(prevWords);
-      const shared = candWords.filter(w => prevSet.has(w)).length;
-      if (shared / candWords.length > 0.75) return { ok: false, reason: 'near-duplicate of previous reply' };
+    if (normalize(reply) === normalize(context.lastPupilReply)) {
+      return { ok: false, reason: 'exact repeat of previous reply' };
     }
-  }
-
-  // ── Must-ask enforcement ────────────────────────────────────────────────────
-  if (context.mustAsk && !reply.includes('?')) {
-    return { ok: false, reason: 'must ask a question this turn but reply contains no question' };
-  }
-
-  // ── Same question type repeated consecutively ───────────────────────────────
-  if (context.lastQuestionType && QUESTION_TYPES.has(responseType) && responseType === context.lastQuestionType) {
-    return { ok: false, reason: `same question type (${responseType}) used consecutively` };
   }
 
   return { ok: true };
@@ -436,14 +405,14 @@ export async function runConversationGovernor({ message, history = [], conversat
   if (!apiKey) throw new Error('OPENAI_API_KEY is not set');
 
   const client = new OpenAI({ apiKey });
-  const enforced = selectMove(conversationState);
+  const move   = selectMove(conversationState, message);
 
   const historyMessages = history
     .filter(m => m.role === 'pupil' || m.role === 'student')
     .map(m => ({ role: m.role === 'pupil' ? 'assistant' : 'user', content: m.text }));
 
-  // ── AWAIT_FIRST_IDEA ─────────────────────────────────────────────────────
-  if (enforced === 'AWAIT_FIRST_IDEA') {
+  // ── AWAIT_FIRST_IDEA — hardcoded, no LLM ────────────────────────────────────
+  if (move === 'AWAIT_FIRST_IDEA') {
     const FIRST_REPLIES = [
       "I've never heard of that before. Where do you even start with something like that?",
       "No idea what that is! What's the first thing I'd need to understand?",
@@ -452,20 +421,18 @@ export async function runConversationGovernor({ message, history = [], conversat
       "I don't know a thing about that. Where does someone even begin?",
     ];
     const reply = FIRST_REPLIES[Math.floor(Math.random() * FIRST_REPLIES.length)];
-
-    const provisionalTopic = message.trim().slice(0, 120);
     const updatedState = buildMeaningModel(conversationState, {
-      topic: provisionalTopic,
-      moveUsed: 'AWAIT_FIRST_IDEA',
+      topic:        message.trim().slice(0, 120),
+      moveUsed:     'AWAIT_FIRST_IDEA',
+      lastOpener:   reply.split(' ').slice(0, 3).join(' '),
       lastPupilReply: reply,
-      lastReplyHadQuestion: reply.includes('?'),
     });
-    console.log('[governor] AWAIT_FIRST_IDEA | provisional topic:', provisionalTopic);
+    console.log('[governor] AWAIT_FIRST_IDEA');
     return { reply, conversationState: updatedState, avatarState: 'EXCITED', understandingPct: 1 };
   }
 
-  // ── CLOSE_GRACEFULLY ─────────────────────────────────────────────────────
-  if (enforced === 'CLOSE_GRACEFULLY') {
+  // ── CLOSE_GRACEFULLY — after student confirms summary ───────────────────────
+  if (move === 'CLOSE_GRACEFULLY') {
     let reply = '';
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
@@ -481,37 +448,25 @@ export async function runConversationGovernor({ message, history = [], conversat
         });
         const candidate = (completion.choices[0].message.content || '').trim();
         const check = checkAbsoluteLimits(candidate);
-        if (check.ok) {
-          reply = candidate;
-          console.log(`[CLOSE_GRACEFULLY] attempt ${attempt} passed`);
-          break;
-        } else {
-          console.warn(`[CLOSE_GRACEFULLY] attempt ${attempt} failed (${check.reason}) — retrying`);
-          if (attempt === 2) reply = candidate;
-        }
+        if (check.ok) { reply = candidate; break; }
+        console.warn(`[CLOSE_GRACEFULLY] attempt ${attempt} failed (${check.reason})`);
+        if (attempt === 2) reply = candidate;
       } catch (err) {
         console.warn(`[CLOSE_GRACEFULLY] attempt ${attempt} error:`, err.message);
       }
     }
-    if (!reply) reply = `Thank you — I'll keep thinking about what you taught me.`;
+    if (!reply) reply = `I'll keep thinking about what you taught me. It's a lot to take in.`;
 
-    const updatedState = buildMeaningModel(conversationState, { moveUsed: 'CLOSE_GRACEFULLY' });
+    const updatedState = buildMeaningModel(conversationState, {
+      moveUsed: 'CLOSE_GRACEFULLY',
+      lastPupilReply: reply,
+    });
     console.log('[governor] CLOSE_GRACEFULLY');
     return { reply, conversationState: updatedState, avatarState: 'CELEBRATING', understandingPct: calculateUnderstanding(updatedState) };
   }
 
-  // ── LEARN / SUMMARIZE_AND_CLOSE — single unified call ────────────────────
+  // ── Active moves + support moves — unified LLM call ──────────────────────────
   let output;
-  const enforcerContext = {
-    studentMessage: message,
-    studentClaims: conversationState.studentClaims || [],
-    biggestGap: '',
-  };
-
-  const lastHadQ       = conversationState.lastReplyHadQuestion ?? false;
-  const studentIsShort = message.trim().split(/\s+/).length <= 4;
-  const mustAsk        = !lastHadQ && studentIsShort;
-
   let reply = '';
 
   for (let attempt = 1; attempt <= 2; attempt++) {
@@ -519,40 +474,27 @@ export async function runConversationGovernor({ message, history = [], conversat
       const completion = await client.chat.completions.create({
         model: 'gpt-4o',
         messages: [
-          { role: 'system', content: buildUnifiedPrompt(conversationState, enforced, grade, subject, message) },
+          { role: 'system', content: buildMovePrompt(conversationState, move, grade, subject) },
           ...historyMessages,
           { role: 'user', content: message },
         ],
         response_format: { type: 'json_object' },
-        temperature: attempt === 1 ? 0.7 : 0.85,
-        max_tokens: 900,
+        temperature: attempt === 1 ? 0.75 : 0.9,
+        max_tokens: 700,
       });
 
       const parsed = JSON.parse(completion.choices[0].message.content);
-
-      // On first successful parse, lock in the analysis output
-      if (!output) {
-        output = parsed;
-        enforcerContext.biggestGap = parsed.biggestGap || '';
-        // Include the new claim in grounding context
-        if (parsed.newClaim) {
-          enforcerContext.studentClaims = [...enforcerContext.studentClaims, parsed.newClaim];
-        }
-      }
+      if (!output) output = parsed;
 
       const candidate = (parsed.reply || '').trim();
-      const responseType = parsed.responseType || 'REACTION';
       const check = checkAbsoluteLimits(candidate, {
-        ...enforcerContext,
         lastPupilReply: conversationState.lastPupilReply || null,
-        mustAsk,
-        lastQuestionType: conversationState.lastQuestionType || null,
-      }, responseType);
+      });
 
       if (check.ok) {
-        reply = candidate;
-        output = parsed; // keep the passing attempt's full output
-        console.log(`[unified] attempt ${attempt} passed | type: ${responseType} | level: ${parsed.understandingLevel} | ${reply}`);
+        reply  = candidate;
+        output = parsed;
+        console.log(`[unified] attempt ${attempt} passed | move: ${move} | ${reply}`);
         break;
       } else {
         console.warn(`[unified] attempt ${attempt} failed (${check.reason}) — retrying`);
@@ -568,39 +510,34 @@ export async function runConversationGovernor({ message, history = [], conversat
 
   if (!output) {
     output = {
-      topic: conversationState.topic,
-      newClaim: message.slice(0, 80),
-      hasExample:      conversationState.hasExample,
-      hasExplanation:  conversationState.hasExplanation,
-      hasCausalLink:   conversationState.hasCausalLink,
-      understoodSoFar: 'not enough information yet',
-      biggestGap:      'the overall explanation is still unclear',
-      responseType:    'UNCERTAINTY',
-      replyAnchor:     '',
-      alreadyAskedQuestions: conversationState.alreadyAskedQuestions || [],
-      recentFocuses:         conversationState.recentFocuses || [],
-      doNotAskAgain:         conversationState.doNotAskAgain || [],
-      moveUsed:        enforced,
+      topic:          conversationState.topic,
+      newStudentClaim: null,
+      currentBeliefs: conversationState.currentBeliefs || [],
+      causalModel:    conversationState.causalModel    || [],
+      confusions:     conversationState.confusions     || [],
+      fragileUnderstanding: 'the overall explanation is still unclear',
+      hasExample:     conversationState.hasExample,
+      hasExplanation: conversationState.hasExplanation,
+      hasCausalLink:  conversationState.hasCausalLink,
       understandingLevel: conversationState.understandingLevel ?? 1,
+      moveUsed:       move,
     };
   }
 
   if (!reply) reply = "I'm not sure I follow — can you say that a different way?";
 
-  output.moveUsed = enforced;
+  output.moveUsed      = move;
   output.lastPupilReply = reply;
-  output.lastReplyHadQuestion = reply.includes('?');
-  output.lastQuestionType = QUESTION_TYPES.has(output.responseType) ? output.responseType : null;
+  output.lastOpener    = output.lastOpener || reply.split(' ').slice(0, 3).join(' ');
 
-  // Avatar from shuffled deck
-  const queue = conversationState.avatarQueue && conversationState.avatarQueue.length > 0
+  const queue      = conversationState.avatarQueue?.length > 0
     ? [...conversationState.avatarQueue]
     : shuffledStates();
   const avatarState = queue.shift();
   output.avatarQueue = queue;
 
   const updatedState = buildMeaningModel(conversationState, output);
-  console.log('[governor] move:', enforced, '| type:', output.responseType, '| avatar:', avatarState, '| understanding:', updatedState.understandingLevel);
+  console.log('[governor] move:', move, '| level:', output.understandingLevel, '| avatar:', avatarState);
 
   return { reply, conversationState: updatedState, avatarState, understandingPct: updatedState.understandingLevel };
 }

@@ -411,37 +411,14 @@ export async function runConversationGovernor({ message, history = [], conversat
 
   // ── AWAIT_FIRST_IDEA ─────────────────────────────────────────────────────
   if (enforced === 'AWAIT_FIRST_IDEA') {
-    let reply = '';
-    const firstMsgPrompt = buildFirstMessagePrompt(grade, subject);
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const completion = await client.chat.completions.create({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: firstMsgPrompt },
-            { role: 'user', content: message },
-          ],
-          temperature: attempt === 1 ? 0.9 : 0.95,
-          max_tokens: 80,
-        });
-        const candidate = (completion.choices[0].message.content || '').trim();
-        const check = checkAbsoluteLimits(candidate, { studentMessage: message });
-        if (check.ok) {
-          reply = candidate;
-          console.log(`[AWAIT_FIRST_IDEA] attempt ${attempt} passed | ${reply}`);
-          break;
-        } else {
-          console.warn(`[AWAIT_FIRST_IDEA] attempt ${attempt} failed (${check.reason}) — retrying`);
-          if (attempt === 2) {
-            reply = candidate;
-            console.warn('[AWAIT_FIRST_IDEA] using rule-violating reply as last resort');
-          }
-        }
-      } catch (err) {
-        console.warn(`[AWAIT_FIRST_IDEA] attempt ${attempt} error:`, err.message);
-      }
-    }
-    if (!reply) reply = `I have no idea what that is. Can you start from the very beginning?`;
+    const FIRST_REPLIES = [
+      "I've never heard of that before. Where do you even start with something like that?",
+      "No idea what that is! What's the first thing I'd need to understand?",
+      "That's completely new to me. How would you begin explaining it?",
+      "Never come across that before. What's the best place to start?",
+      "I don't know a thing about that. Where does someone even begin?",
+    ];
+    const reply = FIRST_REPLIES[Math.floor(Math.random() * FIRST_REPLIES.length)];
 
     const provisionalTopic = message.trim().slice(0, 120);
     const updatedState = buildMeaningModel(conversationState, {

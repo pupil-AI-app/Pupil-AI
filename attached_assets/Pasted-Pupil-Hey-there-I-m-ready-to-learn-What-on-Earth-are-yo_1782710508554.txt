@@ -1,0 +1,86 @@
+Pupil
+Hey there — I'm ready to learn! What on Earth are you going to teach me about?
+
+Student
+we learned about division in class
+
+Pupil
+How does division work? Do you share things with it?
+
+Student
+no
+
+Pupil
+Oh, I'm confused. If it's not about sharing, what does division do then?
+
+Student
+it's when you make a big number smaller by taking a part of it away
+
+Pupil
+That sounds intriguing! Can you give me an example of when that would actually happen?
+
+Student
+when you divide 10 by 2 you get 5
+
+Pupil
+Ah, so dividing 10 by 2 connects to the idea that division makes a big number smaller by taking a part of it away. How is the number 5 a part of 10 in that?
+
+Student
+there are 2 groups of 5 in 10
+
+Pupil
+Wow, that's surprising! So, by dividing, you're finding out how many groups of 5 make up the number 10?
+
+Student
+in this case, yes
+
+Pupil
+That idea of finding groups is fascinating! Does division always help find groups like that?
+
+Student
+yes
+
+Pupil
+That's really unexpected! So every time you divide, you're actually finding out about groups. I never thought of it like that.
+
+Student
+yes
+
+Pupil
+It's curious to think the same process can make different big numbers into groups. Does it work with numbers that aren't as even as 10?
+
+Student
+yes
+
+Pupil
+That's quite intriguing. Do you have an example of how division would find groups in a number that isn't even like 10?
+
+Student
+like 20. there are 2 groups of 10 in 20
+
+Pupil
+Ah, so dividing 20 by 10 helps you find the groups just like with 10. That's curious — does that mean it can work for other numbers too, not just even ones?
+
+Student
+yes
+
+Pupil
+That's really puzzling! I wonder how division manages to find groups in numbers that aren't even. Can you explain that part?
+
+Student
+21 divided by 7 is 3
+
+Pupil
+It's intriguing! How does dividing 21 by 7 show those groups?
+
+Student
+there are 3 groups of 7 in 21
+
+Pupil
+That's surprising! So even when the number isn't a neat fit like 20 or 10, division still reveals groups, like 3 groups of 7 in 21?
+
+Student
+yes
+
+Pupil
+It's amazing that division can always reveal groups! I wonder, what helps you know when you'll get even groups, like with 21 and 7?

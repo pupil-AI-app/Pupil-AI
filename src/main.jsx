@@ -203,13 +203,13 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
   const [reportLoading, setReportLoading] = useState(false);
   const [sessionStartTime] = useState(() => Date.now());
   const [lastModel, setLastModel] = useState(null);
-  const [saved, setSaved] = useState(false);
+  const savedRef = React.useRef(false);
 
   async function saveIfNeeded(currentMessages, currentState, currentPct) {
-    if (saved) return;
-    setSaved(true);
+    if (savedRef.current) return;
+    savedRef.current = true;
     try {
-      await fetch('/api/conversations', {
+      const res = await fetch('/api/conversations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -220,7 +220,16 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
           understandingPct: currentPct,
         }),
       });
-    } catch {}
+      if (!res.ok) {
+        console.error('[save] failed:', res.status, await res.text());
+        savedRef.current = false;
+      } else {
+        console.log('[save] conversation saved');
+      }
+    } catch (err) {
+      console.error('[save] error:', err);
+      savedRef.current = false;
+    }
   }
 
   async function handleFinish() {

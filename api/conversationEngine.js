@@ -73,16 +73,18 @@ export function selectMove(state, studentMessage = '') {
 
   const msg = studentMessage.trim().toLowerCase();
 
+  // ── Support: acknowledge after Pupil made a mistake ─────────────────────────
+  // Must be FIRST — before stuck detection, before everything. When Pupil just
+  // made a mistake, the student's next message is always a response to that
+  // mistake (correction, confirmation, or confusion). "Not really", "no", "yes",
+  // "I'm not sure" — all should trigger REFLECT, not stuck detection or agreement.
+  if (lastThreeMoves[lastThreeMoves.length - 1] === 'MAKE_PLAUSIBLE_MISTAKE') {
+    return 'REFLECT_ON_CHANGED_UNDERSTANDING';
+  }
+
   // ── Support: student stuck or can't articulate ─────────────────────────────
   if (/\b(i'?m not sure|i don'?t know|i can'?t (?:explain|describe|say)|idk|don'?t know how to|don'?t know where to)\b|^(not sure|no idea|dunno|not really|it'?s (?:difficult|hard) to (?:explain|describe|say)|hard to (?:explain|describe|say)|i'?m not sure)/.test(msg)) {
     return pickFrom(['CREATE_TINY_EXPERIMENT', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves);
-  }
-
-  // ── Support: acknowledge after Pupil made a mistake ─────────────────────────
-  // Must come before low-info agreement: "yes" after a mistake means the student
-  // accepted the wrong claim — Pupil should reflect, not make another mistake.
-  if (lastThreeMoves[lastThreeMoves.length - 1] === 'MAKE_PLAUSIBLE_MISTAKE') {
-    return 'REFLECT_ON_CHANGED_UNDERSTANDING';
   }
 
   // ── Support: low-information agreement — student confirms but adds nothing ──
@@ -276,12 +278,12 @@ State it as Pupil's prediction. Do not ask the student to confirm with a yes/no 
 
     APPLY_TO_NEW_CASE: `Take the student's idea and apply it to a new scenario they haven't mentioned. State what you think should happen in that scenario.
 
-Good examples:
+Good examples (style only — never copy these verbatim, always invent your own scenario):
 • (Macbeth) "If Macbeth had become king without killing anyone — say the king just died naturally — then by your logic the play would still be about ambition, just without the guilt part."
 • (AI chatbots) "If the training data was only cooking recipes, then by your explanation the chatbot should only be able to talk about food — it wouldn't know anything else."
 • (Multiplication) "If I had 4 groups of 3, then by the groups idea I'd count 3 four times — so the answer should be 12."
 
-State your application as Pupil's own attempt. You may add "Fix that if it doesn't work." but do not open with a question.`,
+State your application as Pupil's own attempt. End with "Fix that if it doesn't work." Do not open with a question.`,
 
     COMPARE_TWO_IDEAS: `Put two things the student has taught you side by side and name the tension or relationship between them. State your reading of the relationship — don't ask the student to explain it.
 
@@ -292,14 +294,14 @@ Good examples:
 
 Name the relationship. Don't ask the student to name it for you.`,
 
-    CREATE_TINY_EXPERIMENT: `Build a small, specific scenario to test the idea. State the scenario and what you think happens — let the student evaluate your conclusion.
+    CREATE_TINY_EXPERIMENT: `Build a small, specific scenario to test the idea. State the scenario and what you think happens — then invite the student to fix your conclusion.
 
-Good examples:
+Good examples (style only — never copy these verbatim, always invent your own scenario):
 • (AI chatbots) "Let me test this: if I type 'The dog chased the...' — a chatbot should guess the next word by finding what word most often follows that in its training data, without understanding dogs at all. Fix that if it's off."
 • (Macbeth) "Let me try something: if we removed every scene with the witches, by your logic Macbeth might still have the ambition — but he'd never act on it. Fix that if it's wrong."
-• (Multiplication) "Let me test this: 3 bags with 2 apples in each — I'd count 2, 4, 6 — and land on 6 without counting every apple. That's what multiplication does with the groups."
+• (Multiplication) "Let me test this: if there are 5 rows of 4 chairs, I'd add 4 five times and land on 20 without counting every chair. Fix that if the groups idea doesn't work like that."
 
-State your scenario AND your expected outcome. Do not ask the student to supply the outcome.`,
+State your scenario AND your expected outcome. End with a repair invitation ("Fix that if I'm wrong." / "Fix that if it doesn't work."). Do not end with a confident conclusion that presents the result as established fact.`,
 
     REFLECT_ON_CHANGED_UNDERSTANDING: `Name what just shifted in your model because of what the student said. State the old assumption and the new one.
 

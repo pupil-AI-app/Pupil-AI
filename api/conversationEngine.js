@@ -442,6 +442,8 @@ export async function runConversationGovernor({ message, history = [], conversat
     const updatedState = buildMeaningModel(conversationState, {
       topic: provisionalTopic,
       moveUsed: 'AWAIT_FIRST_IDEA',
+      lastPupilReply: reply,
+      lastReplyHadQuestion: reply.includes('?'),
     });
     console.log('[governor] AWAIT_FIRST_IDEA | provisional topic:', provisionalTopic);
     return { reply, conversationState: updatedState, avatarState: 'EXCITED', understandingPct: 1 };

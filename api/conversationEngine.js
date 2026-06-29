@@ -366,7 +366,7 @@ export async function runConversationGovernor({ message, history = [], conversat
     .map(m => ({ role: m.role === 'pupil' ? 'assistant' : 'user', content: m.text }));
 
   const callLLM = () => client.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: 'gpt-4o',
     messages: [
       { role: 'system', content: buildPrompt(conversationState, enforced, grade, subject) },
       ...historyMessages,

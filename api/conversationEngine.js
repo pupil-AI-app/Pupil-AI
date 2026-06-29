@@ -48,6 +48,8 @@ export function initialConversationState() {
     alreadyAskedQuestions: [],
     recentFocuses: [],
     doNotAskAgain: [],
+    lastPupilReply: null,       // previous Pupil response — used to prevent exact repeats
+    lastReplyHadQuestion: false, // whether previous reply contained a question mark
   };
 }
 
@@ -110,6 +112,9 @@ export function buildMeaningModel(state, output) {
     next.doNotAskAgain = output.doNotAskAgain.slice(-12);
   }
 
+  if (output.lastPupilReply !== undefined) next.lastPupilReply = output.lastPupilReply;
+  if (output.lastReplyHadQuestion !== undefined) next.lastReplyHadQuestion = output.lastReplyHadQuestion;
+
   return next;
 }
 
@@ -158,11 +163,24 @@ function calculateUnderstanding(state) {
 // The model commits to analysis fields first, then writes the reply constrained
 // by its own prior commitments. "reply" is always the final JSON field.
 
-function buildUnifiedPrompt(state, move, grade, subject) {
+function buildUnifiedPrompt(state, move, grade, subject, studentMessage) {
   const claims  = state.studentClaims.slice(-8).join(' | ') || 'none yet';
   const askedQ  = (state.alreadyAskedQuestions || []).slice(-6).join(' | ') || 'none';
   const dna     = (state.doNotAskAgain        || []).slice(-6).join(' | ') || 'none';
   const recentF = (state.recentFocuses        || []).slice(-3).join(' | ') || 'none';
+
+  const lastReply      = state.lastPupilReply || null;
+  const lastHadQ       = state.lastReplyHadQuestion ?? false;
+  const studentIsShort = studentMessage.trim().split(/\s+/).length <= 4;
+
+  // Two situational rules injected as hard constraints when triggered
+  const mustAskRule = (!lastHadQ || studentIsShort)
+    ? `\nSITUATIONAL RULE — MUST ASK THIS TURN: Your previous reply had no question${studentIsShort ? ', and the student gave a very short response with no new content' : ''}. You must use a question-type responseType (ASK_FOR_EXAMPLE, ASK_FOR_CAUSE, ASK_FOR_CONSEQUENCE, or ASK_FOR_COMPARISON) this turn. Do not use REACTION, CONNECT, NOTICE_TENSION, RESTATE_TENTATIVELY, or UNCERTAINTY.`
+    : '';
+
+  const noRepeatRule = lastReply
+    ? `\nNO-REPEAT RULE: Your previous reply was: "${lastReply}". Do not repeat it, rephrase it, or say the same thing differently. The reply field must be meaningfully different.`
+    : '';
 
   return `You are Pupil — an alien learner who maintains your own understanding model. In a single step you will: update your model, decide how to respond, and write your reply as Pupil.
 
@@ -176,6 +194,7 @@ REPETITION TRACKING — never revisit these:
 - Questions already asked: ${askedQ}
 - Recent focuses: ${recentF}
 - Do not probe again: ${dna}
+${noRepeatRule}${mustAskRule}
 
 ${domainProfile(subject)}
 ${gradeProfile(grade)}
@@ -186,7 +205,7 @@ MOVE: ${move}
 Identify the single most important gap in your understanding right now. This drives everything below.
 
 ═══ STEP 2: CHOOSE YOUR RESPONSE TYPE ═══
-Choose based on what your model needs — not on what appeared in the student's latest message.
+Choose based on what your model needs — not on what appeared in the student's latest message.${mustAskRule ? '\nNote: situational rule above overrides type selection — you must use a question type.' : ''}
 
   Gap: concept stated but no mechanism (how/why)          → ASK_FOR_CAUSE
   Gap: mechanism explained but no concrete instance       → ASK_FOR_EXAMPLE
@@ -199,7 +218,7 @@ Choose based on what your model needs — not on what appeared in the student's 
 
 Consider REACTION when the student's latest message contains something specific, counterintuitive, or genuinely puzzling that is directly relevant to the gap. REACTION often draws out more explanation without requiring a question. Use it when a real hook exists — not as a generic opener.
 
-PRIORITY: Non-question types feel like genuine learning. Question types feel like interrogation. Strongly prefer non-question types. Fall back to a question only when nothing else naturally advances the model.
+PRIORITY: Non-question types feel like genuine learning. Question types feel like interrogation. Strongly prefer non-question types. Fall back to a question only when nothing else naturally advances the model — unless the situational rule above requires a question.
 
 ═══ STEP 3: WRITE YOUR REPLY ═══
 You have now committed to a responseType above. Write Pupil's reply that executes it precisely.
@@ -479,7 +498,7 @@ export async function runConversationGovernor({ message, history = [], conversat
       const completion = await client.chat.completions.create({
         model: 'gpt-4o',
         messages: [
-          { role: 'system', content: buildUnifiedPrompt(conversationState, enforced, grade, subject) },
+          { role: 'system', content: buildUnifiedPrompt(conversationState, enforced, grade, subject, message) },
           ...historyMessages,
           { role: 'user', content: message },
         ],
@@ -543,6 +562,8 @@ export async function runConversationGovernor({ message, history = [], conversat
   if (!reply) reply = "I'm not sure I follow — can you say that a different way?";
 
   output.moveUsed = enforced;
+  output.lastPupilReply = reply;
+  output.lastReplyHadQuestion = reply.includes('?');
 
   // Avatar from shuffled deck
   const queue = conversationState.avatarQueue && conversationState.avatarQueue.length > 0

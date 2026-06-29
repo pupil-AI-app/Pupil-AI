@@ -205,20 +205,32 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
   const [lastModel, setLastModel] = useState(null);
   const [saved, setSaved] = useState(false);
 
-  React.useEffect(() => {
-    if (!conversationComplete || saved) return;
+  async function saveIfNeeded(currentMessages, currentState, currentPct) {
+    if (saved) return;
     setSaved(true);
-    fetch('/api/conversations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        topic: conversationState?.topic || topic || null,
-        grade,
-        subject,
-        messages,
-        understandingPct,
-      }),
-    }).catch(() => {});
+    try {
+      await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: currentState?.topic || topic || null,
+          grade,
+          subject,
+          messages: currentMessages,
+          understandingPct: currentPct,
+        }),
+      });
+    } catch {}
+  }
+
+  async function handleFinish() {
+    await saveIfNeeded(messages, conversationState, understandingPct);
+    onFinish();
+  }
+
+  React.useEffect(() => {
+    if (!conversationComplete) return;
+    saveIfNeeded(messages, conversationState, understandingPct);
   }, [conversationComplete]);
 
   async function sendToTeacher() {
@@ -296,20 +308,20 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
   return (
     <main className="landing-screen chat-screen">
       <nav className="landing-nav" style={{ justifyContent: 'space-between' }}>
-        <button className="ghost" onClick={onFinish}>Finish chat</button>
+        <button className="ghost" onClick={handleFinish}>Finish chat</button>
         <span className="landing-brand">Pupil-AI</span>
       </nav>
 
       {conversationComplete && (
         <div className="completion-overlay">
           <div className="completion-card">
-            <button className="completion-close" onClick={onFinish} aria-label="Close">✕</button>
+            <button className="completion-close" onClick={handleFinish} aria-label="Close">✕</button>
             <img src="/PUPIL_CELEBRATING.png" alt="Pupil celebrating" className="completion-avatar" />
             <div className="completion-text">
               <h2 className="completion-title">Great job!</h2>
               <p className="completion-subtitle">I really learned something today!</p>
             </div>
-            <button className="landing-start-btn completion-btn" onClick={onFinish}>Finish</button>
+            <button className="landing-start-btn completion-btn" onClick={handleFinish}>Finish</button>
             <button className="completion-teacher-btn" onClick={sendToTeacher} disabled={reportLoading}>
               {reportLoading ? 'Generating report…' : 'Send results to teacher'}
             </button>

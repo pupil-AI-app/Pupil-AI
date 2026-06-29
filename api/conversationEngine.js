@@ -572,7 +572,7 @@ export async function runConversationGovernor({ message, history = [], conversat
   let analystOutput;
   try {
     const analystCompletion = await client.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: buildAnalystPrompt(conversationState, enforced, grade, subject) },
         ...historyMessages,

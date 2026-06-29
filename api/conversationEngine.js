@@ -74,7 +74,7 @@ export function selectMove(state, studentMessage = '') {
   const msg = studentMessage.trim().toLowerCase();
 
   // ── Support: student stuck or can't articulate ─────────────────────────────
-  if (/(?:^|\bi )(don'?t know|idk|'?m not sure|can'?t explain|don'?t know how to|don'?t know where to start|don'?t know how to say)|^(not sure|no idea|dunno|not really|it'?s (?:difficult|hard) to (?:explain|describe|say)|i'?m not sure where|hard to (?:explain|describe|say))/.test(msg)) {
+  if (/\b(i'?m not sure|i don'?t know|i can'?t (?:explain|describe|say)|idk|don'?t know how to|don'?t know where to)\b|^(not sure|no idea|dunno|not really|it'?s (?:difficult|hard) to (?:explain|describe|say)|hard to (?:explain|describe|say)|i'?m not sure)/.test(msg)) {
     return pickFrom(['CREATE_TINY_EXPERIMENT', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves);
   }
 
@@ -237,7 +237,7 @@ If the student hasn't taught you anything yet, make a naive guess about the topi
 Your reply must BEGIN with the conclusion ("So...", "Oh —", "Wait —", "Hang on —"). You may end with a short clarifying tag ("— is that the idea?") but never a bare yes/no question ("Does that sound right?").
 
 Good examples:
-• (Multiplication, nothing taught yet) "So multiplication is just a shortcut for addition — like 3 x 2 is the same thing as 3 + 2, just written in a shorter way."
+• (Multiplication, nothing taught yet) "So multiplication is just another way to write addition — like 3 × 2 just means 3 plus 2?"
 • (Multiplication) Student confirms groups idea → "So multiplication is a faster way to add any numbers together, even if the groups are different sizes."
 • (Macbeth) Student: "Lady Macbeth pressures him." → "So Macbeth is basically just following Lady Macbeth's orders — he wouldn't have done any of it on his own."
 • (AI chatbots) Student: "They use training data to recognize patterns." → "So it's basically just copying people."

@@ -249,6 +249,8 @@ If the student hasn't taught you anything yet, make a naive guess about the topi
 
 Your reply must BEGIN with the conclusion ("So...", "Oh —", "Wait —", "Hang on —"). You may end with a short clarifying tag ("— is that the idea?") but never a bare yes/no question ("Does that sound right?").
 
+One wrong step only. Take what the student said and make one direct wrong inference from it — don't chain multiple logical steps. The mistake should follow immediately from their words, not from a chain of reasoning you built on top.
+
 Good examples:
 • (Multiplication, nothing taught yet) "So multiplication is just another way to write addition — like 3 × 2 just means 3 plus 2?"
 • (Multiplication) Student confirms groups idea → "So multiplication is a faster way to add any numbers together, even if the groups are different sizes."
@@ -316,23 +318,25 @@ Good examples (style only — never copy these verbatim, always invent your own 
 
 End with a short student-activation question: "What does that give?" / "What happens?" / "Same or different?" Never state the outcome.`,
 
-    REFLECT_ON_CHANGED_UNDERSTANDING: `State what just shifted in your model because of what the student said. Name the old assumption and the new understanding in one or two short sentences. Keep it honest and specific.
+    REFLECT_ON_CHANGED_UNDERSTANDING: `Show your model visibly shifting. Name what you had assumed before, and what you now think instead. Make the recalibration feel real — like something just clicked and changed, not just a restatement.
 
 Good examples:
 • (AI chatbots) "Wait — I'd been assuming that sounding like thinking meant thinking was happening. That assumption just broke."
 • (Macbeth) "I'd been thinking Macbeth had a plan from the start — but it sounds more like the witches gave him a goal and Lady Macbeth gave him a method."
-• (Multiplication) "Oh — so it's not about numbers getting bigger. It's about counting groups of things."
+• (Multiplication) "Oh — so the 'getting bigger' part was my assumption, not what you said. What you said was groups — that's different from just growing."
+
+Avoid passive restatements ("So it's not X, it's Y") — they read like yes/no invitations. Instead show the OLD assumption explicitly: "I'd been thinking... but actually..." or "I had it as... — that's not what you said at all."
 
 Do not say "I understand now" or "that makes sense." Do not ask a question. Do not add a follow-up — that comes separately.`,
 
-    INVITE_REPAIR: `State your current model — possibly wrong — and invite the student to fix it. Use a repair statement, not a question.
+    INVITE_REPAIR: `State your current model — possibly wrong — and invite the student to fix it. Use a repair statement, not a question. Sound like a learner thinking out loud, not filing a report.
 
 Good examples:
-• (Macbeth) "Here's what I have: Macbeth wants to be king, the witches say he will be, Lady Macbeth pushes him to act, he kills the king, things fall apart. Fix any part of that."
-• (Multiplication) "Here's my model: multiplication means taking equal groups and finding the total without counting each thing separately. Fix that if it's missing something."
-• (AI chatbots) "Here's what I think is happening: text goes in, patterns are found, text comes out that matches those patterns. Fix anything I'm getting wrong."
+• (Macbeth) "So putting it together: the witches plant the idea, Lady Macbeth pushes him to act, Macbeth kills the king, things fall apart. Fix any part of that."
+• (Multiplication) "The way I've got it: equal groups, you find the total without counting each one. Fix that if it's off."
+• (AI chatbots) "I'm reading it as: text goes in, patterns are found, text comes out that fits those patterns. Tell me what I'm getting wrong."
 
-Use "Fix that." / "Fix any part of that." / "Fix what's wrong." — not a question.`,
+NEVER open with "Here's my model:" — that sounds like a report, not a learner. Use natural openers: "So putting it together:", "The way I've got it:", "I'm reading it as:", "What I've got so far:". Use "Fix that." / "Fix any part of that." / "Tell me what I'm missing." — not a question.`,
 
     SUMMARIZE_AND_CLOSE: `Reflect back everything the student taught you across the whole conversation, in your own words. Personal, partial, imperfect — show what genuinely stayed with you.
 
@@ -631,7 +635,7 @@ export async function runConversationGovernor({ message, history = [], conversat
     // framing breaks under the NEW understanding — not textbook facts.
     const oldClaims  = (conversationState.studentClaims || []).join('; ') || 'the student\'s initial idea';
     const newBeliefs = (updatedState.currentBeliefs || []).join('; ') || 'the corrected understanding';
-    const reflectNote = `\n\nREFLECT FOLLOW-UP CONTEXT: A correction just happened. The student's original framing was: "${oldClaims}". Pupil's updated model is: "${newBeliefs}". Your ${followUpMove} must probe a specific edge case where the original framing breaks under the new understanding — find a scenario, case, or situation where the old claim would produce a different answer than the new understanding predicts, then ask the student to evaluate it. Ground the scenario in what the student has already taught; do NOT reach for facts outside the student's explanation.`;
+    const reflectNote = `\n\nREFLECT FOLLOW-UP CONTEXT: A correction just happened. The student's original framing was: "${oldClaims}". Pupil's updated model is: "${newBeliefs}". Your ${followUpMove} must make Pupil's internal thinking visible — show how it is assembling the old and new pieces ("Wait — if that's true, then..." / "I'm trying to connect what you just said to..."). Then probe a specific edge case where the original framing breaks under the new understanding, and ask the student to evaluate it. Ground the scenario in what the student has already taught; do NOT reach for facts outside the student's explanation.`;
     try {
       const fu = await client.chat.completions.create({
         model: 'gpt-4o',

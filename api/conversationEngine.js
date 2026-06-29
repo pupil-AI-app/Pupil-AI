@@ -626,11 +626,17 @@ export async function runConversationGovernor({ message, history = [], conversat
       ? ['MAKE_PLAUSIBLE_MISTAKE', 'APPLY_TO_NEW_CASE', 'FIND_WEAK_SPOT']
       : ['MAKE_PLAUSIBLE_MISTAKE'];
     const followUpMove = pickFrom(followUpPool, updatedState.lastThreeMoves);
+    // Build a context note for the follow-up: the LLM needs to know a
+    // correction just happened so it probes the edge case where the OLD
+    // framing breaks under the NEW understanding — not textbook facts.
+    const oldClaims  = (conversationState.studentClaims || []).join('; ') || 'the student\'s initial idea';
+    const newBeliefs = (updatedState.currentBeliefs || []).join('; ') || 'the corrected understanding';
+    const reflectNote = `\n\nREFLECT FOLLOW-UP CONTEXT: A correction just happened. The student's original framing was: "${oldClaims}". Pupil's updated model is: "${newBeliefs}". Your ${followUpMove} must probe a specific edge case where the original framing breaks under the new understanding — e.g. if the original claim was "multiplication makes numbers bigger", probe what happens with a group of 1. Set up the scenario concretely and ask the student to evaluate it. Do NOT reach for general mathematical facts the student hasn't taught.`;
     try {
       const fu = await client.chat.completions.create({
         model: 'gpt-4o',
         messages: [
-          { role: 'system', content: buildMovePrompt(updatedState, followUpMove, grade, subject) },
+          { role: 'system', content: buildMovePrompt(updatedState, followUpMove, grade, subject) + reflectNote },
           ...historyMessages,
           { role: 'user', content: message },
           { role: 'assistant', content: reply },

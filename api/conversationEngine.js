@@ -465,11 +465,19 @@ export async function runConversationGovernor({ message, history = [], conversat
   // ── AWAIT_FIRST_IDEA — hardcoded, no LLM ────────────────────────────────────
   if (move === 'AWAIT_FIRST_IDEA') {
     const FIRST_REPLIES = [
-      "I've never heard of that before. Where do you even start with something like that?",
-      "No idea what that is! What's the first thing I'd need to understand?",
       "That's completely new to me. How would you begin explaining it?",
-      "Never come across that before. What's the best place to start?",
-      "I don't know a thing about that. Where does someone even begin?",
+      "I've never run into that before. What's the first thing someone like me should understand?",
+      "That's a brand-new idea to me. Where would you start if you were teaching it from the beginning?",
+      "I don't know anything about that yet. What's the first piece I need before the rest will make sense?",
+      "I've got nothing in my head about that yet. Where do we begin?",
+      "That's one Earth idea I've never heard before. What's the first thing you'd teach me?",
+      "I'm starting from zero on that one. What would you teach first?",
+      "That doesn't mean anything to me yet. Where would you start helping me understand it?",
+      "I've never come across that before. What's the first step toward understanding it?",
+      "I'm excited for you to tell me what on Earth that is. Where should we begin?",
+      "That sounds like something people on Earth already know, but I don't. What's the first thing can tell me about it?",
+      "I'm starting with an empty picture in my head. What's the first thing you'd add?",
+      "I don't have any ideas about that yet. What's the best place to begin?",
     ];
     const reply = FIRST_REPLIES[Math.floor(Math.random() * FIRST_REPLIES.length)];
     const updatedState = buildMeaningModel(conversationState, {

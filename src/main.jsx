@@ -207,6 +207,7 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
   const [conversationComplete, setConversationComplete] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [sessionStartTime] = useState(() => Date.now());
+  const [lastModel, setLastModel] = useState(null);
 
   async function sendToTeacher() {
     setReportLoading(true);
@@ -260,7 +261,7 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
       const reply = data.reply && data.reply.trim()
         ? data.reply.trim()
         : "I'm having trouble hearing that. Can you try again?";
-      console.log('[Pupil-AI] model used this turn:', data._model);
+      if (data._model) setLastModel(data._model);
       if (data.conversationState) setConversationState(data.conversationState);
       if (data.avatarState) setAvatarState(data.avatarState);
       if (data.understandingPct !== undefined) setUnderstandingPct(data.understandingPct);
@@ -328,6 +329,7 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
             ))}
           </div>
 
+          {lastModel && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textAlign: 'right', padding: '0 4px 4px' }}>model: {lastModel}</div>}
           <div className="composer">
             <input
               value={input}

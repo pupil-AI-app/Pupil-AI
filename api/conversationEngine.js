@@ -78,15 +78,17 @@ export function selectMove(state, studentMessage = '') {
     return pickFrom(['CREATE_TINY_EXPERIMENT', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves);
   }
 
+  // ── Support: acknowledge after Pupil made a mistake ─────────────────────────
+  // Must come before low-info agreement: "yes" after a mistake means the student
+  // accepted the wrong claim — Pupil should reflect, not make another mistake.
+  if (lastThreeMoves[lastThreeMoves.length - 1] === 'MAKE_PLAUSIBLE_MISTAKE') {
+    return 'REFLECT_ON_CHANGED_UNDERSTANDING';
+  }
+
   // ── Support: low-information agreement — student confirms but adds nothing ──
   // These are prime moments for a plausible mistake: Pupil uses what it has.
   if (/^(yes|yeah|yep|yup|mhm|mm-?hmm|okay|ok|sure|right|correct|i guess|kind of|sort of|i think so|maybe|probably|i suppose|uh huh|true)\.?$/.test(msg)) {
     return pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'APPLY_TO_NEW_CASE', 'CREATE_TINY_EXPERIMENT'], lastThreeMoves);
-  }
-
-  // ── Support: acknowledge after Pupil made a mistake ─────────────────────────
-  if (lastThreeMoves[lastThreeMoves.length - 1] === 'MAKE_PLAUSIBLE_MISTAKE') {
-    return 'REFLECT_ON_CHANGED_UNDERSTANDING';
   }
 
   // ── Active moves based on state ─────────────────────────────────────────────
@@ -277,7 +279,7 @@ State it as Pupil's prediction. Do not ask the student to confirm with a yes/no 
 Good examples:
 • (Macbeth) "If Macbeth had become king without killing anyone — say the king just died naturally — then by your logic the play would still be about ambition, just without the guilt part."
 • (AI chatbots) "If the training data was only cooking recipes, then by your explanation the chatbot should only be able to talk about food — it wouldn't know anything else."
-• (Multiplication) "If I had 0 groups of 5, then by the groups idea I'd have nothing — so the answer should be 0."
+• (Multiplication) "If I had 4 groups of 3, then by the groups idea I'd count 3 four times — so the answer should be 12."
 
 State your application as Pupil's own attempt. You may add "Fix that if it doesn't work." but do not open with a question.`,
 
@@ -317,9 +319,9 @@ Good examples:
 
 Use "Fix that." / "Fix any part of that." / "Fix what's wrong." — not a question.`,
 
-    SUMMARIZE_AND_CLOSE: `Reflect back everything the student taught you across the whole conversation. Personal, partial, imperfect — in your own words. Show what genuinely stayed with you. End with one open question about what you might still be missing.
+    SUMMARIZE_AND_CLOSE: `Reflect back everything the student taught you across the whole conversation, in your own words. Personal, partial, imperfect — show what genuinely stayed with you.
 
-This is the only move where multiple sentences are encouraged. Make it feel like a real learner summing up, not a polished recap.`,
+This is the only move where multiple sentences are encouraged. End with a repair invitation ("Fix anything I've got wrong.") — never an open question. Never say "we learned" or "we talked about" — Pupil is hearing this for the first time, from this student alone. Make it feel like a real learner summing up, not a teacher recap.`,
 
   };
 
@@ -387,10 +389,17 @@ Return ONLY valid JSON with "reply" as the final field:
 function buildClosePrompt(state, grade) {
   const gradeCtx = gradeProfile(grade);
   const claims   = state.studentClaims.slice(-4).join(', ') || 'the concept';
-  return `You are Pupil — an alien learner. A student has just confirmed your understanding. Close the conversation warmly. Reference one specific idea from this conversation that genuinely stayed with you. The student taught you about: ${state.topic || 'this concept'}, covering: ${claims}.
+  return `You are Pupil — an alien learner. A student just finished teaching you something. End the conversation as a grateful learner — brief, specific, grounded in one thing they actually said.
 
-Do NOT use a generic closing ("Thanks!", "I understand now!", "I never thought of it like that!"). Make it personal to this conversation.
-${gradeCtx ? gradeCtx + '\n' : ''}15–25 words. Warm and specific. Write ONLY Pupil's reply.`;
+The student taught you about: ${state.topic || 'this concept'}, covering: ${claims}.
+
+ABSOLUTE LIMITS:
+- No cheerleader phrases: "Keep being awesome!", "You're amazing!", "Magic [topic] speed!"
+- No emojis
+- No generic closings: "Thanks!", "I understand now!", "I never thought of it like that!"
+- No "we" — Pupil was never in the student's class. Pupil heard all of this for the first time just now.
+- One specific thing from this conversation. Not a general statement about the topic.
+${gradeCtx ? gradeCtx + '\n' : ''}15–30 words. Write ONLY Pupil's reply.`;
 }
 
 // ─── Layer 3: Light enforcer ─────────────────────────────────────────────────

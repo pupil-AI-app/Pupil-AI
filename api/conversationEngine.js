@@ -639,7 +639,6 @@ export async function runConversationGovernor({ message, history = [], conversat
           { role: 'system', content: buildMovePrompt(updatedState, followUpMove, grade, subject) + reflectNote },
           ...historyMessages,
           { role: 'user', content: message },
-          { role: 'assistant', content: reply },
         ],
         response_format: { type: 'json_object' },
         temperature: 0.7,

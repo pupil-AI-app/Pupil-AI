@@ -1,1 +1,2 @@
 - [Prompt stability rule](prompt-stability.md) — user wants prompt preserved as-is; only targeted minimal edits going forward
+- [Pupil-AI architecture decisions](pupil-ai-architecture.md) — key design rules for the conversation engine that must be preserved

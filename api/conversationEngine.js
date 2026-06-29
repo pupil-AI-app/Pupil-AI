@@ -614,10 +614,16 @@ export async function runConversationGovernor({ message, history = [], conversat
   // ── REFLECT chain: auto-fire a propulsive second move immediately ─────────────
   let followUpReply = null;
   if (move === 'REFLECT_ON_CHANGED_UNDERSTANDING') {
-    const followUpMove = pickFrom(
-      ['MAKE_PLAUSIBLE_MISTAKE', 'APPLY_TO_NEW_CASE', 'FIND_WEAK_SPOT'],
-      updatedState.lastThreeMoves
-    );
+    // Gate the follow-up pool on state richness.
+    // APPLY_TO_NEW_CASE and FIND_WEAK_SPOT require substantial content to work
+    // from — with a thin model they fall back to textbook facts the student
+    // never taught. MAKE_PLAUSIBLE_MISTAKE only needs the basic concept.
+    const stateIsRich = updatedState.understandingLevel >= 3
+      && (updatedState.studentClaims || []).length >= 3;
+    const followUpPool = stateIsRich
+      ? ['MAKE_PLAUSIBLE_MISTAKE', 'APPLY_TO_NEW_CASE', 'FIND_WEAK_SPOT']
+      : ['MAKE_PLAUSIBLE_MISTAKE'];
+    const followUpMove = pickFrom(followUpPool, updatedState.lastThreeMoves);
     try {
       const fu = await client.chat.completions.create({
         model: 'gpt-4o',

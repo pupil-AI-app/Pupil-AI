@@ -631,7 +631,7 @@ export async function runConversationGovernor({ message, history = [], conversat
     // framing breaks under the NEW understanding — not textbook facts.
     const oldClaims  = (conversationState.studentClaims || []).join('; ') || 'the student\'s initial idea';
     const newBeliefs = (updatedState.currentBeliefs || []).join('; ') || 'the corrected understanding';
-    const reflectNote = `\n\nREFLECT FOLLOW-UP CONTEXT: A correction just happened. The student's original framing was: "${oldClaims}". Pupil's updated model is: "${newBeliefs}". Your ${followUpMove} must probe a specific edge case where the original framing breaks under the new understanding — e.g. if the original claim was "multiplication makes numbers bigger", probe what happens with a group of 1. Set up the scenario concretely and ask the student to evaluate it. Do NOT reach for general mathematical facts the student hasn't taught.`;
+    const reflectNote = `\n\nREFLECT FOLLOW-UP CONTEXT: A correction just happened. The student's original framing was: "${oldClaims}". Pupil's updated model is: "${newBeliefs}". Your ${followUpMove} must probe a specific edge case where the original framing breaks under the new understanding — find a scenario, case, or situation where the old claim would produce a different answer than the new understanding predicts, then ask the student to evaluate it. Ground the scenario in what the student has already taught; do NOT reach for facts outside the student's explanation.`;
     try {
       const fu = await client.chat.completions.create({
         model: 'gpt-4o',

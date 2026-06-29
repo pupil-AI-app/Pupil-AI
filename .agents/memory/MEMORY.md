@@ -1,2 +1,3 @@
 - [Prompt stability rule](prompt-stability.md) — user wants prompt preserved as-is; only targeted minimal edits going forward
 - [Pupil-AI architecture decisions](pupil-ai-architecture.md) — key design rules for the conversation engine that must be preserved
+- [Internal model brittleness](internal-model-brittleness.md) — LLM-invented state metadata is unvalidated; options A–D held for future consideration

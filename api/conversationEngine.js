@@ -50,6 +50,7 @@ export function initialConversationState() {
     doNotAskAgain: [],
     lastPupilReply: null,       // previous Pupil response — used to prevent exact repeats
     lastReplyHadQuestion: false, // whether previous reply contained a question mark
+    lastQuestionType: null,      // responseType of last question turn — prevents same type consecutively
   };
 }
 
@@ -112,8 +113,9 @@ export function buildMeaningModel(state, output) {
     next.doNotAskAgain = output.doNotAskAgain.slice(-12);
   }
 
-  if (output.lastPupilReply !== undefined) next.lastPupilReply = output.lastPupilReply;
+  if (output.lastPupilReply !== undefined)      next.lastPupilReply = output.lastPupilReply;
   if (output.lastReplyHadQuestion !== undefined) next.lastReplyHadQuestion = output.lastReplyHadQuestion;
+  if (output.lastQuestionType !== undefined)     next.lastQuestionType = output.lastQuestionType;
 
   return next;
 }
@@ -370,6 +372,10 @@ function isGrounded(reply, context = {}) {
   return [...significant].some(w => replyWords.has(w));
 }
 
+function normalize(s) {
+  return s.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+}
+
 function checkAbsoluteLimits(reply, context = {}, responseType = '') {
   if (BANNED_PRAISE.test(reply))     return { ok: false, reason: 'contains praise' };
   if (BANNED_AFFIRM.test(reply))     return { ok: false, reason: 'contains generic affirmation' };
@@ -392,6 +398,30 @@ function checkAbsoluteLimits(reply, context = {}, responseType = '') {
   }
 
   if (!isGrounded(reply, context))   return { ok: false, reason: 'not grounded in student content or identified gap' };
+
+  // ── Deterministic repeat check ──────────────────────────────────────────────
+  if (context.lastPupilReply) {
+    const prevNorm = normalize(context.lastPupilReply);
+    const candNorm = normalize(reply);
+    if (prevNorm === candNorm) return { ok: false, reason: 'exact repeat of previous reply' };
+    const prevWords = prevNorm.split(/\s+/).filter(w => w.length > 3);
+    const candWords = candNorm.split(/\s+/).filter(w => w.length > 3);
+    if (prevWords.length >= 5 && candWords.length >= 5) {
+      const prevSet = new Set(prevWords);
+      const shared = candWords.filter(w => prevSet.has(w)).length;
+      if (shared / candWords.length > 0.75) return { ok: false, reason: 'near-duplicate of previous reply' };
+    }
+  }
+
+  // ── Must-ask enforcement ────────────────────────────────────────────────────
+  if (context.mustAsk && !reply.includes('?')) {
+    return { ok: false, reason: 'must ask a question this turn but reply contains no question' };
+  }
+
+  // ── Same question type repeated consecutively ───────────────────────────────
+  if (context.lastQuestionType && QUESTION_TYPES.has(responseType) && responseType === context.lastQuestionType) {
+    return { ok: false, reason: `same question type (${responseType}) used consecutively` };
+  }
 
   return { ok: true };
 }
@@ -475,6 +505,10 @@ export async function runConversationGovernor({ message, history = [], conversat
     biggestGap: '',
   };
 
+  const lastHadQ       = conversationState.lastReplyHadQuestion ?? false;
+  const studentIsShort = message.trim().split(/\s+/).length <= 4;
+  const mustAsk        = !lastHadQ || studentIsShort;
+
   let reply = '';
 
   for (let attempt = 1; attempt <= 2; attempt++) {
@@ -505,7 +539,12 @@ export async function runConversationGovernor({ message, history = [], conversat
 
       const candidate = (parsed.reply || '').trim();
       const responseType = parsed.responseType || 'REACTION';
-      const check = checkAbsoluteLimits(candidate, enforcerContext, responseType);
+      const check = checkAbsoluteLimits(candidate, {
+        ...enforcerContext,
+        lastPupilReply: conversationState.lastPupilReply || null,
+        mustAsk,
+        lastQuestionType: conversationState.lastQuestionType || null,
+      }, responseType);
 
       if (check.ok) {
         reply = candidate;
@@ -548,6 +587,7 @@ export async function runConversationGovernor({ message, history = [], conversat
   output.moveUsed = enforced;
   output.lastPupilReply = reply;
   output.lastReplyHadQuestion = reply.includes('?');
+  output.lastQuestionType = QUESTION_TYPES.has(output.responseType) ? output.responseType : null;
 
   // Avatar from shuffled deck
   const queue = conversationState.avatarQueue && conversationState.avatarQueue.length > 0

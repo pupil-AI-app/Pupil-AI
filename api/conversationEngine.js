@@ -413,7 +413,7 @@ Return ONLY valid JSON with "reply" as the final field:
   "hasExample": "boolean — true ONLY when the student has given a specific, concrete example (actual numbers, named events, a real scenario — not a vague analogy or a general statement about what something does)",
   "hasExplanation": "boolean — true ONLY when the student has clearly explained the mechanism or process, not just described the surface effect (e.g. 'multiplication is repeated addition' counts; 'it makes numbers bigger' does not)",
   "hasCausalLink": "boolean — true ONLY when the student has explicitly connected a cause to an effect — explaining WHY or HOW something works, not just that it does",
-  "understandingLevel": "integer 1–5. Start at 1. Increase by 1 only when the student adds something genuinely new and specific that advances Pupil's model. Never jump more than 1 per turn.",
+  "understandingLevel": "integer 1–5. Start at 1. Increase when the student's message genuinely advances the model — by 1 for a single new idea or clarification, by 2 when the message contains multiple distinct new ideas or a mechanism that substantially deepens understanding in one go. Never decrease. Never increase on a bare confirmation ('yes', 'exactly', 'that's it').",
   "moveUsed": "${move}",
   "lastOpener": "string — the first 2–3 words of your reply (used to prevent repetition next turn)",
   "thinking": "1–2 sentences: what did the student actually just say, and how does it land in Pupil's current model? Reference specific words from the conversation.",

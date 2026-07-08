@@ -230,7 +230,10 @@ export function buildMeaningModel(state, output) {
 
   if (output.understandingLevel !== undefined) {
     const raw = parseInt(output.understandingLevel, 10);
-    if (Number.isFinite(raw)) next.understandingLevel = Math.max(1, Math.min(5, raw));
+    if (Number.isFinite(raw)) {
+      // Level never decreases — clamp to current value as a floor
+      next.understandingLevel = Math.max(state.understandingLevel ?? 1, Math.min(5, raw));
+    }
   }
 
   return next;
@@ -452,7 +455,7 @@ Return ONLY valid JSON with "reply" as the final field:
   "hasExample": "boolean — true when the student has moved beyond the definition to give a concrete instance — a specific scenario, a process walkthrough, or a worked example (even without precise numbers). False for bare definitional statements ('it is when X happens') or pure abstractions with no grounding.",
   "hasExplanation": "boolean — true ONLY when the student has clearly explained the mechanism or process, not just described the surface effect (e.g. 'multiplication is repeated addition' counts; 'it makes numbers bigger' does not)",
   "hasCausalLink": "boolean — true ONLY when the student has explicitly connected a cause to an effect — explaining WHY or HOW something works, not just that it does",
-  "understandingLevel": "integer 1–5. Start at 1. Increase when the student's message genuinely advances the model — by 1 for a single new idea or clarification, by 2 when the message contains multiple distinct new ideas or a mechanism that substantially deepens understanding in one go. Never increase on a bare confirmation ('yes', 'exactly', 'that's it'). Decrease by at most 1, and only when the student's message reveals a clear contradiction of something they previously explained correctly — not on vague answers, short replies, or corrections to Pupil's mistake. Default to holding the current level when in doubt.",
+  "understandingLevel": "integer 1–5. Start at 1. Increase when the student's message genuinely advances the model — by 1 for a single new idea or clarification, by 2 when the message contains multiple distinct new ideas or a mechanism that substantially deepens understanding in one go. Never increase on a bare confirmation ('yes', 'exactly', 'that's it'). NEVER decrease: hold the current level in all cases. The level only moves up or stays flat — never down.",
   "moveUsed": "${move}",
   "lastOpener": "string — the first 2–3 words of your reply (used to prevent repetition next turn)",
   "thinking": "1–2 sentences: what did the student actually just say, and how does it land in Pupil's current model? Reference specific words from the conversation.",

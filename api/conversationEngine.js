@@ -145,12 +145,14 @@ export function selectMove(state, studentMessage = '') {
 
   if (!hasCausalLink) {
     return lastMoveWasFWS
-      ? pickFrom(['COMPARE_TWO_IDEAS', 'BUILD_ROUGH_MODEL'], lastThreeMoves)
-      : pickFrom(['COMPARE_TWO_IDEAS', 'BUILD_ROUGH_MODEL', 'FIND_WEAK_SPOT'], lastThreeMoves);
+      ? pickFrom(['MAKE_PREDICTION', 'COMPARE_TWO_IDEAS', 'BUILD_ROUGH_MODEL'], lastThreeMoves)
+      : pickFrom(['MAKE_PREDICTION', 'COMPARE_TWO_IDEAS', 'BUILD_ROUGH_MODEL', 'FIND_WEAK_SPOT'], lastThreeMoves);
   }
 
-  // Model complete but close conditions not yet met — keep probing and assembling
-  return pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'COMPARE_TWO_IDEAS', 'BUILD_ROUGH_MODEL'], lastThreeMoves);
+  // Model complete but close conditions not yet met.
+  // Consequence questions (MAKE_PREDICTION) are the primary mid-to-late move —
+  // shift from "did I understand?" to "if this is true, what else must be true?"
+  return pickFrom(['MAKE_PREDICTION', 'MAKE_PLAUSIBLE_MISTAKE', 'COMPARE_TWO_IDEAS'], lastThreeMoves);
 }
 
 // ─── Layer 0: State updater ───────────────────────────────────────────────────
@@ -310,9 +312,9 @@ Good examples (style only — always use what the student has actually taught, n
 
 State it as a statement. Do not ask "why" — name what feels off, then leave space for the student to resolve it.`,
 
-    MAKE_PREDICTION: `Take the specific claim the student just made and push it one step further — state where that exact logic leads. Do not jump to a sub-topic, edge case, or property the student has not mentioned.
+    MAKE_PREDICTION: `Ask a consequence question in the form of a statement: "If what the student taught me is true, then X must also be true." Push the logic one step further — don't ask whether you understood, ask what else must follow. State the consequence as Pupil's own conclusion, then invite correction.
 
-CRITICAL: The prediction must follow directly from what the student actually said in this conversation. If the student said "multiplication is like addition," predict something about THAT relationship — not about multiplying by zero, not about groups, not about any other property you know exists. Stay inside the territory the student has mapped.
+CRITICAL: The consequence must follow directly from what the student actually said in this conversation. If the student said "multiplication is like addition," derive a consequence of THAT relationship — not about multiplying by zero, not about groups, not about any other property you know exists. Stay inside the territory the student has mapped.
 
 Good examples (each extends the student's exact claim, nothing more):
 • (AI chatbots, student said "it learns patterns from text") "So then if the training data had really strange patterns in it, the chatbot should produce strange outputs — without knowing why."

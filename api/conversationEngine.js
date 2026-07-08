@@ -412,6 +412,7 @@ Return ONLY valid JSON with "reply" as the final field:
   "understandingLevel": "integer 1–5. Start at 1. Increase by 1 only when the student adds something genuinely new and specific that advances Pupil's model. Never jump more than 1 per turn.",
   "moveUsed": "${move}",
   "lastOpener": "string — the first 2–3 words of your reply (used to prevent repetition next turn)",
+  "thinking": "1–2 sentences: what did the student actually just say, and how does it land in Pupil's current model? Reference specific words from the conversation.",
   "reply": "Pupil's response — executes ${move} precisely, 1–3 sentences, no praise, no teacher voice, grounded in what the student has taught"
 }`;
 }

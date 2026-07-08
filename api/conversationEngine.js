@@ -204,7 +204,7 @@ export function buildMeaningModel(state, output) {
   }
   if (output.avatarQueue !== undefined)        next.avatarQueue = output.avatarQueue;
 
-  if (output.newStudentClaim && !next.studentClaims.includes(output.newStudentClaim)) {
+  if (output.newStudentClaim && !next.studentClaims.some(c => normalize(c) === normalize(output.newStudentClaim))) {
     next.studentClaims = [...next.studentClaims, output.newStudentClaim];
   }
 
@@ -515,6 +515,7 @@ const ZERO_QUESTION_MOVES = new Set([
   'MAKE_PLAUSIBLE_MISTAKE',
   'REFLECT_ON_CHANGED_UNDERSTANDING',
   'SUMMARIZE_AND_CLOSE',
+  'CLOSE_GRACEFULLY',
 ]);
 
 function checkAbsoluteLimits(reply, context = {}) {
@@ -704,7 +705,10 @@ export async function runConversationGovernor({ message, history = [], conversat
     };
   }
 
-  if (!reply) reply = "I'm not sure I follow — can you say that a different way?";
+  if (!reply) {
+    const lastClaim = conversationState.studentClaims.slice(-1)[0] || 'the first idea you gave me';
+    reply = `I lost the thread there. The piece I'm holding onto is: ${lastClaim}. Fix that part for me.`;
+  }
 
   output.moveUsed      = move;
   output.lastPupilReply = reply;
@@ -726,6 +730,7 @@ export async function runConversationGovernor({ message, history = [], conversat
   // skipping prevents recycled/confused follow-ups.
   const newClaimAdded = updatedState.studentClaims.length > conversationState.studentClaims.length;
   let followUpReply = null;
+  let finalState = updatedState;
   if (move === 'REFLECT_ON_CHANGED_UNDERSTANDING' && newClaimAdded) {
     // Gate the follow-up pool on state richness.
     // FIND_WEAK_SPOT requires substantial content to work from — with a thin
@@ -742,7 +747,7 @@ export async function runConversationGovernor({ message, history = [], conversat
     // framing breaks under the NEW understanding — not textbook facts.
     const oldClaims  = (conversationState.studentClaims || []).join('; ') || 'the student\'s initial idea';
     const newBeliefs = (updatedState.currentBeliefs || []).join('; ') || 'the corrected understanding';
-    const reflectNote = `\n\nREFLECT FOLLOW-UP CONTEXT: A correction just happened. The student's original framing was: "${oldClaims}". Pupil's updated model is: "${newBeliefs}". Your ${followUpMove} must make Pupil's internal thinking visible — show how it is assembling the old and new pieces ("Wait — if that's true, then..." / "I'm trying to connect what you just said to..."). Then probe a specific edge case where the original framing breaks under the new understanding, and ask the student to evaluate it. Ground the scenario in what the student has already taught; do NOT reach for facts outside the student's explanation.`;
+    const reflectNote = `\n\nREFLECT FOLLOW-UP CONTEXT: A correction just happened. The student's original framing was: "${oldClaims}". Pupil's updated model is: "${newBeliefs}". Your ${followUpMove} must make Pupil's internal thinking visible — show how it is assembling the old and new pieces ("Wait — if that's true, then..." / "I'm trying to connect what you just said to..."). Then probe a specific edge case where the original framing breaks under the new understanding, and leave a clear opening for the student to correct or refine the idea. Ground the scenario in what the student has already taught; do NOT reach for facts outside the student's explanation.`;
     try {
       const fu = await client.chat.completions.create({
         model: 'gpt-4o',
@@ -760,10 +765,13 @@ export async function runConversationGovernor({ message, history = [], conversat
       if (fuCandidate) {
         const fuCheck = checkAbsoluteLimits(fuCandidate, { move: followUpMove, recentPupilReplies: updatedState.recentPupilReplies || [] });
         if (fuCheck.ok) {
-          followUpReply = fuCandidate;
+          fuParsed.moveUsed       = followUpMove;
+          fuParsed.lastPupilReply = fuCandidate;
+          fuParsed.lastOpener     = fuParsed.lastOpener || fuCandidate.split(' ').slice(0, 3).join(' ');
+          finalState              = buildMeaningModel(updatedState, fuParsed);
+          followUpReply           = fuCandidate;
         } else {
           console.warn(`[reflect-chain] follow-up reply rejected (${fuCheck.reason}) — suppressing`);
-          followUpReply = null;
         }
       }
       console.log(`[reflect-chain] follow-up move: ${followUpMove} | ${followUpReply}`);
@@ -772,5 +780,5 @@ export async function runConversationGovernor({ message, history = [], conversat
     }
   }
 
-  return { reply, followUpReply, conversationState: updatedState, avatarState, understandingPct: updatedState.understandingLevel };
+  return { reply, followUpReply, conversationState: finalState, avatarState, understandingPct: finalState.understandingLevel };
 }

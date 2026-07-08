@@ -35,6 +35,7 @@ export function initialConversationState() {
     currentAssumption:    '',    // what Pupil is currently assuming
     lastOpener:           '',    // first words of last reply — prevents opener repetition
     lastThreeMoves:       [],    // recent move history — prevents repetition
+    usedWeakSpots:        [],    // premises already named in FIND_WEAK_SPOT — prevents repetition
     hasExample:           false,
     hasExplanation:       false,
     hasCausalLink:        false,
@@ -67,11 +68,12 @@ export function selectMove(state, studentMessage = '') {
   if (lastThreeMoves.includes('SUMMARIZE_AND_CLOSE')) {
     return 'CLOSE_GRACEFULLY';
   }
-  // Require genuine depth before closing: understanding must reach level 4
-  // (needs ~3 clear teaching turns to get there, since it starts at 1 and
-  // increments by at most 1 per turn) AND at least 4 distinct student claims.
+  // Require genuine depth before closing: understanding must reach level 3
+  // (2 genuine increments from the starting 1) AND at least 4 distinct claims.
+  // Safety valve: if student has taught 6+ distinct things, close regardless
+  // of understandingLevel to prevent infinite loops on confirmation-heavy sessions.
   if (hasExample && hasExplanation && hasCausalLink
-      && (understandingLevel ?? 1) >= 4
+      && ((understandingLevel ?? 1) >= 3 || studentClaims.length >= 6)
       && studentClaims.length >= 4) {
     // Pre-close wind-down: if Pupil hasn't visibly assembled the full picture
     // recently, run BUILD_ROUGH_MODEL first so the student sees Pupil pulling
@@ -103,11 +105,14 @@ export function selectMove(state, studentMessage = '') {
   }
 
   // ── Support: low-information agreement — student confirms but adds nothing ──
-  // MAKE_PLAUSIBLE_MISTAKE and APPLY_TO_NEW_CASE are the right moves here —
-  // CREATE_TINY_EXPERIMENT is excluded because it tends to become a teacher
-  // demonstration when Pupil already has a correct model.
+  // When the model is already rich (3+ claims), route toward assembly moves so
+  // Pupil consolidates what it heard rather than pressing again with another
+  // mistake. When content is thin, a mistake gives the student something to
+  // correct and advances the model.
   if (/^(yes|yeah|yep|yup|mhm|mm-?hmm|okay|ok|sure|right|correct|i guess|kind of|sort of|i think so|maybe|probably|i suppose|uh huh|true)\.?$/.test(msg)) {
-    return pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'APPLY_TO_NEW_CASE'], lastThreeMoves);
+    return studentClaims.length >= 3
+      ? pickFrom(['BUILD_ROUGH_MODEL', 'COMPARE_TWO_IDEAS', 'MAKE_PREDICTION'], lastThreeMoves)
+      : pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'APPLY_TO_NEW_CASE'], lastThreeMoves);
   }
 
   // ── Active moves based on state ─────────────────────────────────────────────
@@ -131,7 +136,7 @@ export function selectMove(state, studentMessage = '') {
   const lastMoveWasFindWeakSpot = lastMove === 'FIND_WEAK_SPOT';
   if (!hasExample && studentClaims.length >= 1) {
     return lastMoveWasTest
-      ? pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'FIND_WEAK_SPOT', 'MAKE_PREDICTION'], lastThreeMoves)
+      ? pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'MAKE_PREDICTION'], lastThreeMoves)
       : pickFrom(['APPLY_TO_NEW_CASE', 'MAKE_PLAUSIBLE_MISTAKE', 'CREATE_TINY_EXPERIMENT'], lastThreeMoves);
   }
 
@@ -195,6 +200,15 @@ export function buildMeaningModel(state, output) {
 
   if (output.moveUsed) {
     next.lastThreeMoves = [...state.lastThreeMoves, output.moveUsed].slice(-3);
+  }
+
+  // Track weak spot premises to prevent repetition across the session
+  if (output.moveUsed === 'FIND_WEAK_SPOT' && output.lastPupilReply) {
+    const premise = output.lastPupilReply.split(' ').slice(0, 10).join(' ');
+    const already = state.usedWeakSpots || [];
+    if (!already.some(w => w.startsWith(premise.slice(0, 20)))) {
+      next.usedWeakSpots = [...already, premise].slice(-5);
+    }
   }
 
   if (output.understandingLevel !== undefined) {
@@ -267,11 +281,11 @@ Good examples:
 
 Never open with "Why...", "How does...", "What makes...", or "Can you..." The student-activation question at the end is the one permitted question.`,
 
-    MAKE_PLAUSIBLE_MISTAKE: `Arrive at a conclusion — but make it grounded and slightly wrong. The student should want to correct you. State it directly.
+    MAKE_PLAUSIBLE_MISTAKE: `Let a conclusion form in your head — but get one thing slightly wrong. Sound like a learner making a natural inference, not pressing a point. The student should want to gently correct you.
 
 If the student hasn't taught you anything yet, make a naive guess about the topic from the topic name alone — an intuitive (wrong) assumption.
 
-Your reply must BEGIN with the conclusion ("So...", "Oh —", "Wait —", "Hang on —"). State the wrong conclusion directly — that alone is enough for the student to correct it. Do not add any closing tag or question.
+Your reply must BEGIN with the conclusion ("So...", "Oh —", "Wait —", "Hang on —"). State the wrong conclusion as something Pupil has landed on while thinking — not a challenge or accusation. Do not add any closing tag or question.
 
 One wrong step only. Take what the student said and make one direct wrong inference from it — don't chain multiple logical steps. The mistake should follow immediately from their words, not from a chain of reasoning you built on top.
 
@@ -293,19 +307,19 @@ Good examples:
 
 Never end with a yes/no question. Use repair invitations instead: "Fix that if I'm wrong." / "Tell me what I'm missing." / "Fix any part of that."`,
 
-    FIND_WEAK_SPOT: `Name the exact thing in your model that doesn't fit or breaks. Be specific — not "I'm confused" but "this specific thing doesn't work." State the break as a statement, not as a question.
+    FIND_WEAK_SPOT: `Notice a place where the idea you've been given doesn't quite fit when you try to apply it — something that feels off, like a piece that won't slot in. You're not certain it's wrong, you're genuinely puzzled by it. Be specific about what feels off, but stay in explorer mode, not prosecutor mode.
 
-Open with a natural, curious reaction — varied each time. Good openers:
-"Wait —", "Hang on —", "Hmm —", "Hold on —", "Oh —", "Hm, wait —"
+Open with a natural, wondering reaction — varied each time:
+"Wait —", "Hang on —", "Hmm —", "Hold on —", "Hm, wait —"
 
-Do NOT use "Something breaks:" or "Something doesn't fit in my model:" as your opener — those are formulaic. Lead with a natural reaction, then name the specific break.
+Do NOT use "Something breaks:" or "Something doesn't fit in my model:" — those are formulaic. Lead with the natural reaction, then describe what feels off.
 
 Good examples (style only — always use what the student has actually taught, never copy these verbatim):
-• (Macbeth) "Wait — if the witches said Macbeth would be king regardless, then killing Duncan shouldn't have been necessary at all. That part doesn't add up."
-• (AI chatbots) "Hang on — if it's only predicting words, the outputs should feel random. But they seem to make sense. That's the part I can't fit in."
-• (Multiplication) "Hmm — I thought multiplying always made numbers bigger, but 3 × 1 is still 3. That doesn't fit the groups idea you gave me."
+• (Macbeth) "Wait — if the witches said Macbeth would be king no matter what, then killing Duncan shouldn't have changed anything. That part doesn't quite slot in for me."
+• (AI chatbots) "Hang on — if it's only predicting the next word, the outputs should feel kind of random. But they seem to make sense. That's the part I can't fit together."
+• (Multiplication) "Hmm — when I try to picture multiplying by 1, I can't see where the groups idea fits. One group of 3 feels like it should do something more than just stay as 3."
 
-Name the break as a statement. Do not ask "why" — that hands the work back to the student before Pupil has done its part.`,
+State it as a statement. Do not ask "why" — name what feels off, then leave space for the student to resolve it.`,
 
     MAKE_PREDICTION: `Based on what the student has taught you, predict what should follow. State the prediction directly — don't ask the student to predict for you.
 
@@ -402,7 +416,9 @@ CONVERSATION GROUNDING: Before writing your reply, read the full conversation in
 
 THIS TURN: ${move}
 
-${getMoveInstructions(move)}
+${getMoveInstructions(move)}${move === 'FIND_WEAK_SPOT' && state.usedWeakSpots?.length > 0
+  ? `\n\nALREADY NAMED THIS SESSION — do not revisit these (invent a genuinely different puzzle):\n${state.usedWeakSpots.map(w => `• "${w}..."`).join('\n')}`
+  : ''}
 
 ABSOLUTE LIMITS
 - No praise: "Great!", "Excellent!", "Good point!", "Well done!"

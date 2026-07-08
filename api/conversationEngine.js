@@ -39,6 +39,7 @@ export function initialConversationState() {
     hasExplanation:       false,
     hasCausalLink:        false,
     understandingLevel:   1,
+    testIdeaCount:        0,
     avatarQueue:          [],
     lastPupilReply:       null,
   };
@@ -113,10 +114,12 @@ export function selectMove(state, studentMessage = '') {
       : pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'TEST_THE_IDEA'], lastThreeMoves);
   }
 
-  // ── First test gate — early conversation only ────────────────────────────────
-  // Only fires when claims < 5 — once the conversation is in close territory
-  // (5+ claims) re-running test scenarios extends conversations unnecessarily.
-  if (!lastThreeMoves.includes('TEST_THE_IDEA') && studentClaims.length >= 2 && studentClaims.length < 5) {
+  // ── Test gate — at most 2 uses per session, early conversation only ──────────
+  // testIdeaCount tracks lifetime uses; lastThreeMoves prevents back-to-back.
+  // claims < 5 keeps it out of the close zone.
+  const testIdeaCount = state.testIdeaCount || 0;
+  if (testIdeaCount < 2 && !lastThreeMoves.includes('TEST_THE_IDEA')
+      && studentClaims.length >= 2 && studentClaims.length < 5) {
     return 'TEST_THE_IDEA';
   }
 
@@ -191,6 +194,9 @@ export function buildMeaningModel(state, output) {
 
   if (output.moveUsed) {
     next.lastThreeMoves = [...state.lastThreeMoves, output.moveUsed].slice(-3);
+    if (output.moveUsed === 'TEST_THE_IDEA') {
+      next.testIdeaCount = (state.testIdeaCount || 0) + 1;
+    }
   }
 
   // Track weak spot premises to prevent repetition across the session

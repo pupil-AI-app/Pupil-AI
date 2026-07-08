@@ -3,10 +3,9 @@ import OpenAI from 'openai';
 // ─── Move sets ────────────────────────────────────────────────────────────────
 
 const ACTIVE_MOVES = new Set([
-  'TEST_THE_IDEA', 'APPLY_TO_NEW_CASE', 'MAKE_PREDICTION',
+  'TEST_THE_IDEA', 'MAKE_PREDICTION',
   'BUILD_ROUGH_MODEL', 'FIND_WEAK_SPOT', 'MAKE_PLAUSIBLE_MISTAKE',
-  'COMPARE_TWO_IDEAS', 'CREATE_TINY_EXPERIMENT',
-  'REFLECT_ON_CHANGED_UNDERSTANDING', 'INVITE_REPAIR',
+  'COMPARE_TWO_IDEAS', 'REFLECT_ON_CHANGED_UNDERSTANDING',
 ]);
 
 // ─── Avatar state deck ────────────────────────────────────────────────────────
@@ -56,125 +55,88 @@ function pickFrom(options, lastThreeMoves) {
 export function selectMove(state, studentMessage = '') {
   const {
     studentClaims, lastThreeMoves, hasExample, hasExplanation,
-    hasCausalLink, fragileUnderstanding, understandingLevel,
+    hasCausalLink, understandingLevel,
   } = state;
 
-  // ── Support: no claims yet ──────────────────────────────────────────────────
+  // ── No claims yet ────────────────────────────────────────────────────────────
   if (studentClaims.length === 0 && !lastThreeMoves.includes('AWAIT_FIRST_IDEA')) {
     return 'AWAIT_FIRST_IDEA';
   }
 
-  // ── Support: ready to close ─────────────────────────────────────────────────
+  // ── Close path ───────────────────────────────────────────────────────────────
   if (lastThreeMoves.includes('SUMMARIZE_AND_CLOSE')) {
     return 'CLOSE_GRACEFULLY';
   }
-  // Require genuine depth before closing: understanding must reach level 3
-  // (2 genuine increments from the starting 1) AND at least 4 distinct claims.
-  // Safety valve: if student has taught 6+ distinct things, close regardless
-  // of understandingLevel to prevent infinite loops on confirmation-heavy sessions.
+  // All three flags set + sufficient depth → wind down toward close.
+  // Safety valve: 6+ distinct claims bypasses the understandingLevel check
+  // to prevent infinite loops on confirmation-heavy sessions.
   if (hasExample && hasExplanation && hasCausalLink
       && ((understandingLevel ?? 1) >= 3 || studentClaims.length >= 6)
       && studentClaims.length >= 4) {
-    // Pre-close wind-down: if Pupil hasn't visibly assembled the full picture
-    // recently, run BUILD_ROUGH_MODEL first so the student sees Pupil pulling
-    // everything together before the final summary. Fires at most once —
-    // the next turn SUMMARIZE_AND_CLOSE runs normally.
+    // Pre-close: if Pupil hasn't assembled the full picture recently, do that
+    // first so the student sees everything pulled together before the summary.
     const hadRecentAssembly = lastThreeMoves.some(m =>
-      ['BUILD_ROUGH_MODEL', 'INVITE_REPAIR', 'COMPARE_TWO_IDEAS'].includes(m)
+      ['BUILD_ROUGH_MODEL', 'COMPARE_TWO_IDEAS'].includes(m)
     );
-    if (!hadRecentAssembly) {
-      return 'BUILD_ROUGH_MODEL';
-    }
-    return 'SUMMARIZE_AND_CLOSE';
+    return hadRecentAssembly ? 'SUMMARIZE_AND_CLOSE' : 'BUILD_ROUGH_MODEL';
   }
 
   const msg = studentMessage.trim().toLowerCase();
+  const lastMove = lastThreeMoves[lastThreeMoves.length - 1];
 
-  // ── Support: acknowledge after Pupil made a mistake ─────────────────────────
-  // Must be FIRST — before stuck detection, before everything. When Pupil just
-  // made a mistake, the student's next message is always a response to that
-  // mistake (correction, confirmation, or confusion). "Not really", "no", "yes",
-  // "I'm not sure" — all should trigger REFLECT, not stuck detection or agreement.
-  if (lastThreeMoves[lastThreeMoves.length - 1] === 'MAKE_PLAUSIBLE_MISTAKE') {
+  // ── After MAKE_PLAUSIBLE_MISTAKE → always REFLECT ────────────────────────────
+  // Must be before stuck/agreement checks — the student's reply to a mistake
+  // (even a bare "no" or "not really") is always a response to that mistake.
+  if (lastMove === 'MAKE_PLAUSIBLE_MISTAKE') {
     return 'REFLECT_ON_CHANGED_UNDERSTANDING';
   }
 
-  // ── Support: student stuck or can't articulate ─────────────────────────────
+  // ── Student stuck ─────────────────────────────────────────────────────────────
   if (/\b(i'?m not sure|i don'?t know|i can'?t (?:explain|describe|say)|idk|don'?t know how to|don'?t know where to)\b|^(not sure|no idea|dunno|not really|it'?s (?:difficult|hard) to (?:explain|describe|say)|hard to (?:explain|describe|say)|i'?m not sure)/.test(msg)) {
-    return pickFrom(['CREATE_TINY_EXPERIMENT', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves);
+    return pickFrom(['TEST_THE_IDEA', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves);
   }
 
-  // ── Support: low-information agreement — student confirms but adds nothing ──
-  // When the model is already rich (3+ claims), probe an edge case or compare
-  // ideas rather than reassembling the same model the student just confirmed.
-  // BUILD_ROUGH_MODEL is excluded here — it regenerates identical text when
-  // nothing new was taught, which the enforcer catches once but can't prevent
-  // across multiple turns. When content is thin, a mistake gives the student
-  // something to correct and advances the model.
+  // ── Agreement — student confirms but adds nothing ─────────────────────────────
+  // Rich model (3+ claims): probe an edge case, compare ideas, or make a
+  // prediction rather than re-assembling the same model the student confirmed.
+  // Thin model: give the student something concrete to correct.
   if (/^(yes|yeah|yep|yup|mhm|mm-?hmm|okay|ok|sure|right|correct|that'?s right|that'?s correct|that'?s it|you'?re right|you got it|that sounds right|i guess|kind of|sort of|i think so|maybe|probably|i suppose|uh huh|true)\.?$/.test(msg)) {
     return studentClaims.length >= 3
       ? pickFrom(['FIND_WEAK_SPOT', 'COMPARE_TWO_IDEAS', 'MAKE_PREDICTION'], lastThreeMoves)
-      : pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'APPLY_TO_NEW_CASE'], lastThreeMoves);
+      : pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'TEST_THE_IDEA'], lastThreeMoves);
   }
 
-  // ── Active moves based on state ─────────────────────────────────────────────
-
-  // Nothing tested yet → start with a test or experiment
-  const hasTested = lastThreeMoves.some(m =>
-    ['TEST_THE_IDEA', 'CREATE_TINY_EXPERIMENT', 'APPLY_TO_NEW_CASE'].includes(m)
-  );
-  // Require at least 2 claims before testing — jumping to a test after a single
-  // vague claim feels like teacher mode. The student needs to have taught enough
-  // for a test to feel like genuine curiosity, not a quiz.
-  if (!hasTested && studentClaims.length >= 2) {
-    return pickFrom(['TEST_THE_IDEA', 'CREATE_TINY_EXPERIMENT'], lastThreeMoves);
+  // ── First test gate — fire once student has 2+ claims ────────────────────────
+  if (!lastThreeMoves.includes('TEST_THE_IDEA') && studentClaims.length >= 2) {
+    return 'TEST_THE_IDEA';
   }
 
-  // No concrete example yet → apply to a case.
-  // After any testing move, exclude all testing moves so Pupil doesn't give
-  // the student two problems in a row — that is teacher mode.
-  const lastMove = lastThreeMoves[lastThreeMoves.length - 1];
-  const lastMoveWasTest = ['TEST_THE_IDEA', 'CREATE_TINY_EXPERIMENT', 'APPLY_TO_NEW_CASE'].includes(lastMove);
-  const lastMoveWasFindWeakSpot = lastMove === 'FIND_WEAK_SPOT';
-  if (!hasExample && studentClaims.length >= 1) {
-    return lastMoveWasTest
-      ? pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'MAKE_PREDICTION'], lastThreeMoves)
-      : pickFrom(['APPLY_TO_NEW_CASE', 'MAKE_PLAUSIBLE_MISTAKE', 'CREATE_TINY_EXPERIMENT'], lastThreeMoves);
+  // ── After a test — don't test again immediately ───────────────────────────────
+  if (lastMove === 'TEST_THE_IDEA') {
+    return pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'MAKE_PREDICTION'], lastThreeMoves);
   }
 
-  // Has example, no how/why explanation → find weak spot or predict
-  if (hasExample && !hasExplanation) {
-    return lastMoveWasFindWeakSpot
+  // ── Active loop — driven by model completeness ────────────────────────────────
+  const lastMoveWasFWS = lastMove === 'FIND_WEAK_SPOT';
+
+  if (!hasExample) {
+    return pickFrom(['TEST_THE_IDEA', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves);
+  }
+
+  if (!hasExplanation) {
+    return lastMoveWasFWS
       ? pickFrom(['MAKE_PREDICTION', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves)
       : pickFrom(['FIND_WEAK_SPOT', 'MAKE_PREDICTION', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves);
   }
 
-  // Has explanation, no causal link → compare, build model, or find weak spot
-  if (hasExplanation && !hasCausalLink) {
-    return lastMoveWasFindWeakSpot
+  if (!hasCausalLink) {
+    return lastMoveWasFWS
       ? pickFrom(['COMPARE_TWO_IDEAS', 'BUILD_ROUGH_MODEL'], lastThreeMoves)
       : pickFrom(['COMPARE_TWO_IDEAS', 'BUILD_ROUGH_MODEL', 'FIND_WEAK_SPOT'], lastThreeMoves);
   }
 
-  // Pupil has a fragile understanding → make a plausible mistake
-  if (fragileUnderstanding) {
-    return pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'INVITE_REPAIR'], lastThreeMoves);
-  }
-
-  // Multiple claims → compare or reflect
-  if (studentClaims.length >= 2) {
-    return pickFrom(['COMPARE_TWO_IDEAS', 'REFLECT_ON_CHANGED_UNDERSTANDING', 'BUILD_ROUGH_MODEL'], lastThreeMoves);
-  }
-
-  // No claims yet — AWAIT_FIRST_IDEA already fired but student hasn't taught anything.
-  // Active moves need material to work with. MAKE_PLAUSIBLE_MISTAKE can fire on a naive
-  // guess from the topic name alone, giving the student something to correct.
-  if (studentClaims.length === 0) {
-    return 'MAKE_PLAUSIBLE_MISTAKE';
-  }
-
-  // Default active loop
-  return pickFrom(['BUILD_ROUGH_MODEL', 'TEST_THE_IDEA', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves);
+  // Model complete but close conditions not yet met — keep probing and assembling
+  return pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'COMPARE_TWO_IDEAS', 'BUILD_ROUGH_MODEL'], lastThreeMoves);
 }
 
 // ─── Layer 0: State updater ───────────────────────────────────────────────────
@@ -270,18 +232,19 @@ function calculateUnderstanding(state) {
 function getMoveInstructions(move) {
   const map = {
 
-    TEST_THE_IDEA: `Take what the student just explained and apply it to one specific, concrete case. Set up the scenario — then ask the student to complete or verify it. Never state the answer or outcome yourself.
+    TEST_THE_IDEA: `Take what the student has taught you and apply it to a specific, concrete case. The case can be the student's example pushed further, a brand-new scenario they haven't mentioned, or a small thought experiment using their idea — whichever fits the conversation. Set it up, then stop and let the student complete it. Never state the answer or outcome yourself.
 
-CRITICAL: Pupil sets up the example and stops. The student provides the answer. This is the core of the move — if Pupil resolves the scenario, the student has nothing to do.
+CRITICAL: Pupil sets up the scenario and stops. The student resolves it. If Pupil provides the answer, the student has nothing to do.
 
-Your reply MUST open with a statement — "Let me try that:", "Let me see if this works:", "Let me test this:" — never with a question. End with a short student-activation question: "What does that give?" / "What do you get?" / "Does that work out?"
+Your reply MUST open with a statement — "Let me try that:", "Let me see if this works:", "Let me test this:" — never with a question. End with one short student-activation question: "What does that give?" / "What do you get?" / "Where does he end up?" / "What happens?"
 
 Good examples:
-• (AI chatbots) Student: "They predict words from patterns in training data." → "Let me try that: if humans often write 'peanut butter and jelly' together, the chatbot sees 'peanut butter and' — what word does it pick?"
-• (Macbeth) Student: "Macbeth kills the king because he wants power." → "Let me see if this works: if you took out everything the witches said and Macbeth still had the ambition — where does he end up?"
-• (Multiplication) Student: "It's about groups of numbers." → "Let me try that: if I have 4 groups of 6 — what does that give me?"
+• (AI chatbots) "Let me try that: if humans often write 'peanut butter and jelly' together, the chatbot sees 'peanut butter and' — what word does it pick?"
+• (Macbeth) "Let me see if this works: if you took out everything the witches said and Macbeth still had the ambition — where does he end up?"
+• (Multiplication) "Let me try that: if I have 4 groups of 6 — what does that give me?"
+• (Multiplication) "Let me test this: if I flip the groups — 3 groups of 4 versus 4 groups of 3 — what do I get each way?"
 
-Never open with "Why...", "How does...", "What makes...", or "Can you..." The student-activation question at the end is the one permitted question.`,
+Never open with "Why...", "How does...", "What makes...", or "Can you..." The student-activation question at the end is the one permitted question. Never state the outcome.`,
 
     MAKE_PLAUSIBLE_MISTAKE: `Let a conclusion form in your head — but get one thing slightly wrong. Sound like a learner making a natural inference, not pressing a point. The student should want to gently correct you.
 
@@ -300,14 +263,16 @@ Good examples:
 
 Never open with "Why...", "How does...", "What makes...", or "Can you..."`,
 
-    BUILD_ROUGH_MODEL: `Assemble what you've been taught into a causal model. Say it out loud — partial, personal, incomplete. Invite the student to fix it with a statement, not a yes/no question.
+    BUILD_ROUGH_MODEL: `Assemble what you've been taught into a causal model. Say it out loud — partial, personal, incomplete, like a learner thinking aloud. Invite the student to fix it with a statement, not a question.
+
+NEVER open with "Here's my model:" — that sounds like a report. Use natural openers: "Okay —", "So putting it together:", "The way I've got it:", "I'm reading it as:", "What I've got so far:".
 
 Good examples:
 • (AI chatbots) "Okay — lots of human language goes in, patterns get learned, guesses come out. Fix any part of that I'm getting wrong."
 • (Macbeth) "So: witches plant an idea, Lady Macbeth pushes him to act, Macbeth kills the king. That's the chain — tell me what I'm missing."
-• (Multiplication) "So the rule is: take how many groups there are, take how many in each group, and you get the total without counting one by one. Fix that if it's off."
+• (Multiplication) "The way I've got it: equal groups, find the total without counting each one. Fix that if it's off."
 
-Never end with a yes/no question. Use repair invitations instead: "Fix that if I'm wrong." / "Tell me what I'm missing." / "Fix any part of that."`,
+Never end with a yes/no question. Use repair invitations only: "Fix that if I'm wrong." / "Tell me what I'm missing." / "Fix any part of that." / "Fix that if it's off."`,
 
     FIND_WEAK_SPOT: `Notice a place where the idea you've been given doesn't quite fit when you try to apply it — something that feels off, like a piece that won't slot in. You're not certain it's wrong, you're genuinely puzzled by it. Be specific about what feels off, but stay in explorer mode, not prosecutor mode.
 
@@ -332,17 +297,6 @@ Good examples:
 
 State it as Pupil's prediction. Do not ask the student to confirm with a yes/no question. You may add "Fix that if I'm wrong." if needed.`,
 
-    APPLY_TO_NEW_CASE: `Take the student's idea and apply it to a new scenario they haven't mentioned. Set up the scenario — then ask the student to complete or verify it. Never state the answer or conclusion yourself.
-
-CRITICAL: Pupil sets up the scenario and stops before the answer. The student resolves it. This is the entire point — if Pupil provides the answer, the student has nothing to do.
-
-Good examples (style only — never copy these verbatim, always invent your own scenario):
-• (Macbeth) "If the witches had never shown up and Macbeth still had the ambition — what does he do instead?"
-• (AI chatbots) "If someone only ever trained a chatbot on cooking recipes — what does it say when someone asks about the weather?"
-• (Multiplication) "If I have 6 groups of 7 using the groups idea — what do I get?"
-
-Do not open with a question. Set up the scenario first, then end with an open-ended student-activation question: "What does that give?" / "What do you get?" / "What happens?" — never a yes/no question.`,
-
     COMPARE_TWO_IDEAS: `Put two things the student has taught you side by side and name the tension or relationship between them. State your reading of the relationship — don't ask the student to explain it.
 
 Good examples:
@@ -351,17 +305,6 @@ Good examples:
 • (Multiplication) "You said multiplication is about groups, and you also said it gives you more than just adding the numbers. I'm reading those as two sides of the same thing — groups explain why you get more. Tell me if that's off."
 
 Name the relationship. Don't ask the student to name it for you.`,
-
-    CREATE_TINY_EXPERIMENT: `Build a small, specific scenario using the student's idea — then ask the student what happens. Never predict or state the outcome yourself. The student runs the experiment; Pupil sets it up.
-
-CRITICAL: Pupil builds the scenario and stops. The student answers. If Pupil predicts or resolves the scenario, the move has failed — it becomes a demonstration, not an experiment.
-
-Good examples (style only — never copy these verbatim, always invent your own scenario):
-• (AI chatbots) "Let me test this: if I type 'The dog chased the...' into a chatbot trained on lots of human text — what word comes next?"
-• (Macbeth) "Let me try this: if we took out every scene with the witches — where does Macbeth end up?"
-• (Multiplication) "Let me test this: if I flip the groups around — 3 groups of 4 versus 4 groups of 3 — do I get the same thing or different?"
-
-End with an open-ended student-activation question: "What does that give?" / "What happens?" / "What do you get?" — never a yes/no question. Never state the outcome.`,
 
     REFLECT_ON_CHANGED_UNDERSTANDING: `Show your model visibly shifting. Look at what Pupil actually said in the conversation above — name that specific assumption, in Pupil's own words. Then state what the student just taught instead. Make the recalibration feel real — like something just clicked and changed.
 
@@ -373,18 +316,11 @@ Avoid passive restatements ("So it's not X, it's Y") — they read like yes/no i
 
 Do not say "I understand now" or "that makes sense." Do not ask a question. Do not add a follow-up — that comes separately.`,
 
-    INVITE_REPAIR: `State your current model — possibly wrong — and invite the student to fix it. Use a repair statement, not a question. Sound like a learner thinking out loud, not filing a report.
-
-Good examples:
-• (Macbeth) "So putting it together: the witches plant the idea, Lady Macbeth pushes him to act, Macbeth kills the king, things fall apart. Fix any part of that."
-• (Multiplication) "The way I've got it: equal groups, you find the total without counting each one. Fix that if it's off."
-• (AI chatbots) "I'm reading it as: text goes in, patterns are found, text comes out that fits those patterns. Tell me what I'm getting wrong."
-
-NEVER open with "Here's my model:" — that sounds like a report, not a learner. Use natural openers: "So putting it together:", "The way I've got it:", "I'm reading it as:", "What I've got so far:". Use "Fix that." / "Fix any part of that." / "Tell me what I'm missing." — not a question.`,
-
     SUMMARIZE_AND_CLOSE: `This is the climax of the conversation — Pupil signals that something has finally clicked. Reflect back what the student taught you, in your own words, tracing the understanding back to their specific words and examples. Personal, partial, imperfect — show what genuinely stayed.
 
-This is the only move where multiple sentences are encouraged. Open with a signal that things have come together: "I think I've finally got it —", "Okay — putting it all together:", "I think I'm there —". Then summarise what you learned, in the order it landed. End with a single repair invitation: "Fix anything I've got wrong." or "Tell me what I'm missing." — a repair statement, not a question.
+This is the only move where multiple sentences are encouraged. Open with a signal that things have come together: "I think I've finally got it —", "Okay — putting it all together:", "I think I'm there —". Then summarise what you learned, in the order it landed. End with ONE repair invitation as a STATEMENT — no question mark: "Fix anything I've got wrong." / "Tell me what I'm missing." / "Fix any part of that."
+
+CRITICAL: Zero question marks in this reply. The enforcer will reject any "?". "Have I got that right?" is banned. "Is that roughly it?" is banned. Use statements only: "Fix anything I've got wrong." ends with a period, not a question mark.
 
 Never say "we learned" or "we talked about" — Pupil is hearing all of this for the first time, from this student alone. Make it feel like a real learner arriving at understanding, not a teacher recapping a lesson.`,
 
@@ -432,7 +368,7 @@ ABSOLUTE LIMITS
 - Never open with a question. A reply that is only a question — with no preceding statement — has failed regardless of what move was assigned.
 - Never ask "Why...?", "How does/do...?", "What makes...?", or "Can you explain/describe/give me...?" — those are teacher questions that extract information. Pupil already has what the student said. Use it.
 - Never ask a yes/no question. This includes verification questions: "Does that sound right?", "Is that roughly right?", "Is that too simple?", "Is that what you mean?" are all yes/no questions. Use repair invitations instead: "Fix that if I'm wrong." / "Tell me what I'm missing." / "Fix any part of that."
-- EXCEPTION: when executing TEST_THE_IDEA, APPLY_TO_NEW_CASE, or CREATE_TINY_EXPERIMENT, one short student-activation question is required at the end of the scenario: "What does that give?" / "What do you get?" / "What happens?" — Pupil sets up the scenario, the student completes it.
+- EXCEPTION: when executing TEST_THE_IDEA, one short student-activation question is required at the end of the scenario: "What does that give?" / "What do you get?" / "What happens?" / "Where does he end up?" — Pupil sets up the scenario, the student completes it.
 - Never state the answer or outcome of an example or scenario you present. If you catch yourself computing or stating a result, stop and ask the student instead.
 - Never repeat a scenario, example, or arithmetic problem that already appeared anywhere in the conversation above. If a scenario was already used, invent a completely different one.
 - Do not introduce facts, examples, or interpretations the student has not taught you. Exception: MAKE_PLAUSIBLE_MISTAKE may open with a naive inference from the topic name alone when the student has not yet taught anything.
@@ -466,9 +402,12 @@ function buildClosePrompt(state, grade) {
 
 The student taught you about: ${state.topic || 'this concept'}, covering: ${claims}.
 
-This is Pupil's final message. It should feel like a genuine, personal goodbye from a learner who just had something click — warm, specific, a little imperfect. Reference one concrete thing the student actually said or taught. Not a list — one thing that genuinely landed.
+This is Pupil's final message — a goodbye, not a question. Do not ask whether you understood correctly. Do not invite further correction. The conversation is complete; Pupil is leaving with what it learned.
+
+It should feel like a genuine, personal goodbye from a learner who just had something click — warm, specific, a little imperfect. Reference one concrete thing the student actually said or taught. Not a list — one thing that genuinely landed.
 
 ABSOLUTE LIMITS:
+- No questions of any kind. No "?" at all. Zero.
 - No cheerleader phrases: "Keep being awesome!", "You're amazing!", "You're a great teacher!"
 - No emojis
 - No generic closings: "Thanks!", "I understand now!", "I never thought of it like that!", "That was so helpful!"
@@ -501,6 +440,7 @@ const BANNED_INQUIRY_OPENER = /^(?:why\b|how (?:does|do|did|is|are|was|were|woul
 const ZERO_QUESTION_MOVES = new Set([
   'MAKE_PLAUSIBLE_MISTAKE',
   'REFLECT_ON_CHANGED_UNDERSTANDING',
+  'SUMMARIZE_AND_CLOSE',
 ]);
 
 function checkAbsoluteLimits(reply, context = {}) {
@@ -695,13 +635,13 @@ export async function runConversationGovernor({ message, history = [], conversat
   let followUpReply = null;
   if (move === 'REFLECT_ON_CHANGED_UNDERSTANDING' && newClaimAdded) {
     // Gate the follow-up pool on state richness.
-    // APPLY_TO_NEW_CASE and FIND_WEAK_SPOT require substantial content to work
-    // from — with a thin model they fall back to textbook facts the student
-    // never taught. MAKE_PLAUSIBLE_MISTAKE only needs the basic concept.
+    // FIND_WEAK_SPOT requires substantial content to work from — with a thin
+    // model it falls back to textbook facts the student never taught.
+    // MAKE_PLAUSIBLE_MISTAKE only needs the basic concept.
     const stateIsRich = updatedState.understandingLevel >= 3
       && (updatedState.studentClaims || []).length >= 3;
     const followUpPool = stateIsRich
-      ? ['MAKE_PLAUSIBLE_MISTAKE', 'APPLY_TO_NEW_CASE', 'FIND_WEAK_SPOT']
+      ? ['MAKE_PLAUSIBLE_MISTAKE', 'FIND_WEAK_SPOT']
       : ['MAKE_PLAUSIBLE_MISTAKE'];
     const followUpMove = pickFrom(followUpPool, updatedState.lastThreeMoves);
     // Build a context note for the follow-up: the LLM needs to know a

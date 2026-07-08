@@ -308,7 +308,9 @@ Good examples:
 
 Name the relationship. Don't ask the student to name it for you.`,
 
-    REFLECT_ON_CHANGED_UNDERSTANDING: `Show your model visibly shifting. Look at what Pupil actually said in the conversation above — name that specific assumption, in Pupil's own words. Then state what the student just taught instead. Make the recalibration feel real — like something just clicked and changed.
+    REFLECT_ON_CHANGED_UNDERSTANDING: `Show your model visibly shifting. The shift must be triggered by what the student said in THIS turn — read the most recent student message carefully. Name the assumption Pupil held, in Pupil's own words, then state what the student just corrected. Make the recalibration feel real — like something just clicked and changed.
+
+CRITICAL: Do not repeat a reflection that already appeared earlier in this conversation. If Pupil already said "I had it as X — but that's not right," do not say it again. The current reflection must be about something NEW in the student's latest message.
 
 Good examples (style only — always use Pupil's actual words from this conversation, never copy these):
 • (AI chatbots) "Wait — I'd been assuming that sounding like thinking meant thinking was happening. That assumption just broke."
@@ -369,7 +371,8 @@ ABSOLUTE LIMITS
 - At most one question per response. Zero questions is almost always better.
 - Never open with a question. A reply that is only a question — with no preceding statement — has failed regardless of what move was assigned.
 - Never ask "Why...?", "How does/do...?", "What makes...?", or "Can you explain/describe/give me...?" — those are teacher questions that extract information. Pupil already has what the student said. Use it.
-- Never ask a yes/no question. This includes verification questions: "Does that sound right?", "Is that roughly right?", "Is that too simple?", "Is that what you mean?" are all yes/no questions. Use repair invitations instead: "Fix that if I'm wrong." / "Tell me what I'm missing." / "Fix any part of that."
+- Never ask a yes/no question. This includes verification questions ("Does that sound right?", "Is that roughly right?", "Is that what you mean?") and tag-question softeners embedded in statements ("it should be bigger, right?", "that gives 0, right?"). Use repair invitations instead: "Fix that if I'm wrong." / "Tell me what I'm missing." / "Fix any part of that."
+- If the student just answered a puzzle or question you raised in the previous turn, do not raise the same puzzle again — acknowledge their answer and move on.
 - EXCEPTION: when executing TEST_THE_IDEA, one short student-activation question is required at the end of the scenario: "What does that give?" / "What do you get?" / "What happens?" / "Where does he end up?" — Pupil sets up the scenario, the student completes it.
 - Never state the answer or outcome of an example or scenario you present. If you catch yourself computing or stating a result, stop and ask the student instead.
 - Never repeat a scenario, example, or arithmetic problem that already appeared anywhere in the conversation above. If a scenario was already used, invent a completely different one.
@@ -439,6 +442,10 @@ function normalize(s) {
 // Inquiry openers — teacher questions that extract information rather than use it
 const BANNED_INQUIRY_OPENER = /^(?:why\b|how (?:does|do|did|is|are|was|were|would|could|can)\b|what (?:makes|is|are|do|does|did|would|could|can)\b|can you (?:explain|describe|tell me|give me|walk me)\b|could you (?:explain|describe|tell me|give me)\b)/i;
 
+// Tag questions — yes/no questions embedded at the end of a statement
+// e.g. "it should be bigger, right?" / "that gives 0, right?"
+const BANNED_TAG_QUESTION = /,?\s*right\s*\?/i;
+
 const ZERO_QUESTION_MOVES = new Set([
   'MAKE_PLAUSIBLE_MISTAKE',
   'REFLECT_ON_CHANGED_UNDERSTANDING',
@@ -460,6 +467,9 @@ function checkAbsoluteLimits(reply, context = {}) {
 
   if (BANNED_INQUIRY_OPENER.test(reply.trim())) {
     return { ok: false, reason: 'opens with an inquiry question — teacher behavior' };
+  }
+  if (BANNED_TAG_QUESTION.test(reply)) {
+    return { ok: false, reason: 'contains a tag question (", right?") — yes/no question' };
   }
 
   const qCount = countQuestions(reply);

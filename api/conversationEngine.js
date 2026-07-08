@@ -456,6 +456,11 @@ function normalize(s) {
 // Inquiry openers — teacher questions that extract information rather than use it
 const BANNED_INQUIRY_OPENER = /^(?:why\b|how (?:does|do|did|is|are|was|were|would|could|can)\b|what (?:makes|is|are|do|does|did|would|could|can)\b|can you (?:explain|describe|tell me|give me|walk me)\b|could you (?:explain|describe|tell me|give me)\b)/i;
 
+const ZERO_QUESTION_MOVES = new Set([
+  'MAKE_PLAUSIBLE_MISTAKE',
+  'REFLECT_ON_CHANGED_UNDERSTANDING',
+]);
+
 function checkAbsoluteLimits(reply, context = {}) {
   if (BANNED_PRAISE.test(reply))     return { ok: false, reason: 'contains praise' };
   if (BANNED_AFFIRM.test(reply))     return { ok: false, reason: 'contains generic affirmation' };
@@ -469,7 +474,12 @@ function checkAbsoluteLimits(reply, context = {}) {
     return { ok: false, reason: 'opens with an inquiry question — teacher behavior' };
   }
 
-  if (countQuestions(reply) > 1)     return { ok: false, reason: 'more than one question' };
+  const qCount = countQuestions(reply);
+  if (context.move && ZERO_QUESTION_MOVES.has(context.move)) {
+    if (qCount > 0) return { ok: false, reason: `${context.move} must be a statement — no question marks allowed` };
+  } else {
+    if (qCount > 1) return { ok: false, reason: 'more than one question' };
+  }
 
   if (context.lastPupilReply) {
     if (normalize(reply) === normalize(context.lastPupilReply)) {
@@ -579,6 +589,7 @@ export async function runConversationGovernor({ message, history = [], conversat
       const candidate = (parsed.reply || '').trim();
       const check = checkAbsoluteLimits(candidate, {
         lastPupilReply: conversationState.lastPupilReply || null,
+        move,
       });
 
       if (check.ok) {
@@ -666,7 +677,16 @@ export async function runConversationGovernor({ message, history = [], conversat
         max_tokens: 400,
       });
       const fuParsed = JSON.parse(fu.choices[0].message.content);
-      followUpReply = (fuParsed.reply || '').trim() || null;
+      const fuCandidate = (fuParsed.reply || '').trim() || null;
+      if (fuCandidate) {
+        const fuCheck = checkAbsoluteLimits(fuCandidate, { move: followUpMove });
+        if (fuCheck.ok) {
+          followUpReply = fuCandidate;
+        } else {
+          console.warn(`[reflect-chain] follow-up reply rejected (${fuCheck.reason}) — suppressing`);
+          followUpReply = null;
+        }
+      }
       console.log(`[reflect-chain] follow-up move: ${followUpMove} | ${followUpReply}`);
     } catch (err) {
       console.warn('[reflect-chain] follow-up call failed:', err.message);

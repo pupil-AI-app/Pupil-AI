@@ -118,6 +118,18 @@ export function selectMove(state, studentMessage = '') {
     return pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'MAKE_PREDICTION'], lastThreeMoves);
   }
 
+  // ── Elicitation guarantee ────────────────────────────────────────────────────
+  // If no elicitation move (MPM or TEST_THE_IDEA) has fired in the last 3 turns,
+  // force MAKE_PLAUSIBLE_MISTAKE. Prevents the conversation from cycling through
+  // BUILD_ROUGH_MODEL / COMPARE / FIND_WEAK_SPOT where the student can only confirm.
+  const ELICITATION_MOVES = ['MAKE_PLAUSIBLE_MISTAKE', 'TEST_THE_IDEA'];
+  if (
+    studentClaims.length >= 2 &&
+    !lastThreeMoves.some(m => ELICITATION_MOVES.includes(m))
+  ) {
+    return 'MAKE_PLAUSIBLE_MISTAKE';
+  }
+
   // ── Active loop — driven by model completeness ────────────────────────────────
   const lastMoveWasFWS = lastMove === 'FIND_WEAK_SPOT';
 
@@ -270,6 +282,8 @@ Good examples:
 Never open with "Why...", "How does...", "What makes...", or "Can you..."`,
 
     BUILD_ROUGH_MODEL: `Assemble what you've been taught into a causal model. Say it out loud — partial, personal, incomplete, like a learner thinking aloud. Invite the student to fix it with a statement, not a question.
+
+If the chain isn't complete — if you can trace part of it but not all — make the gap visible. Name what's clear and where the picture goes blank. A visible gap invites the student to fill it without you asking a question. Do not smooth over uncertainty to produce a tidy summary.
 
 NEVER open with "Here's my model:" — that sounds like a report. Use natural openers: "Okay —", "So putting it together:", "The way I've got it:", "I'm reading it as:", "What I've got so far:".
 

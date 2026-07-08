@@ -67,10 +67,12 @@ export function selectMove(state, studentMessage = '') {
   if (lastThreeMoves.includes('SUMMARIZE_AND_CLOSE')) {
     return 'CLOSE_GRACEFULLY';
   }
-  // All three flags set + sufficient depth → wind down toward close.
+  // hasExample + hasExplanation + sufficient depth → wind down toward close.
+  // hasCausalLink removed as a hard gate — understandingLevel already measures
+  // depth; requiring both creates redundant blocking on some topics.
   // Safety valve: 6+ distinct claims bypasses the understandingLevel check
   // to prevent infinite loops on confirmation-heavy sessions.
-  if (hasExample && hasExplanation && hasCausalLink
+  if (hasExample && hasExplanation
       && ((understandingLevel ?? 1) >= 3 || studentClaims.length >= 6)
       && studentClaims.length >= 4) {
     // Pre-close: if Pupil hasn't assembled the full picture recently, do that

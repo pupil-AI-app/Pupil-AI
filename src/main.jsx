@@ -301,7 +301,7 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
       }
       if (data.conversationState?.lastThreeMoves?.includes('CLOSE_GRACEFULLY')) {
         setCloseReply(reply);
-        setTimeout(() => setConversationComplete(true), 4000);
+        setTimeout(() => setConversationComplete(true), 6000);
       }
     } catch {
       setMessages([...next, { role: 'pupil', text: "I'm having trouble hearing that. Can you try again?" }]);

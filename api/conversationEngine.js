@@ -73,6 +73,16 @@ export function selectMove(state, studentMessage = '') {
   if (hasExample && hasExplanation && hasCausalLink
       && (understandingLevel ?? 1) >= 4
       && studentClaims.length >= 4) {
+    // Pre-close wind-down: if Pupil hasn't visibly assembled the full picture
+    // recently, run BUILD_ROUGH_MODEL first so the student sees Pupil pulling
+    // everything together before the final summary. Fires at most once —
+    // the next turn SUMMARIZE_AND_CLOSE runs normally.
+    const hadRecentAssembly = lastThreeMoves.some(m =>
+      ['BUILD_ROUGH_MODEL', 'INVITE_REPAIR', 'COMPARE_TWO_IDEAS'].includes(m)
+    );
+    if (!hadRecentAssembly) {
+      return 'BUILD_ROUGH_MODEL';
+    }
     return 'SUMMARIZE_AND_CLOSE';
   }
 
@@ -356,9 +366,11 @@ Good examples:
 
 NEVER open with "Here's my model:" — that sounds like a report, not a learner. Use natural openers: "So putting it together:", "The way I've got it:", "I'm reading it as:", "What I've got so far:". Use "Fix that." / "Fix any part of that." / "Tell me what I'm missing." — not a question.`,
 
-    SUMMARIZE_AND_CLOSE: `Reflect back everything the student taught you across the whole conversation, in your own words. Personal, partial, imperfect — show what genuinely stayed with you.
+    SUMMARIZE_AND_CLOSE: `This is the climax of the conversation — Pupil signals that something has finally clicked. Reflect back what the student taught you, in your own words, tracing the understanding back to their specific words and examples. Personal, partial, imperfect — show what genuinely stayed.
 
-This is the only move where multiple sentences are encouraged. End with a repair invitation ("Fix anything I've got wrong.") — never an open question. Never say "we learned" or "we talked about" — Pupil is hearing this for the first time, from this student alone. Make it feel like a real learner summing up, not a teacher recap.`,
+This is the only move where multiple sentences are encouraged. Open with a signal that things have come together: "I think I've finally got it —", "Okay — putting it all together:", "I think I'm there —". Then summarise what you learned, in the order it landed. End with a single repair invitation: "Have I got that right?" or "Fix anything I've got wrong." — never an open question, never multiple questions.
+
+Never say "we learned" or "we talked about" — Pupil is hearing all of this for the first time, from this student alone. Make it feel like a real learner arriving at understanding, not a teacher recapping a lesson.`,
 
   };
 

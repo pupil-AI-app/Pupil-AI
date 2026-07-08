@@ -67,20 +67,25 @@ export function selectMove(state, studentMessage = '') {
   if (lastThreeMoves.includes('SUMMARIZE_AND_CLOSE') || lastThreeMoves.includes('CLOSE_GRACEFULLY')) {
     return 'CLOSE_GRACEFULLY';
   }
-  // hasExample + hasExplanation + sufficient depth → wind down toward close.
-  // hasCausalLink removed as a hard gate — understandingLevel already measures
-  // depth; requiring both creates redundant blocking on some topics.
-  // Safety valve: 6+ distinct claims bypasses the understandingLevel check
-  // to prevent infinite loops on confirmation-heavy sessions.
+  // ── Close path — normal + absolute safety valve ──────────────────────────────
+  const hadRecentAssembly = lastThreeMoves.some(m =>
+    ['BUILD_ROUGH_MODEL', 'COMPARE_TWO_IDEAS'].includes(m)
+  );
+  const doClose = () => hadRecentAssembly ? 'SUMMARIZE_AND_CLOSE' : 'BUILD_ROUGH_MODEL';
+
+  // Absolute safety valve: 6+ distinct claims forces close regardless of depth
+  // flags. Prevents infinite loops when hasExample/hasExplanation stay false
+  // because the student never initiated a concrete example (Pupil set them all
+  // up via TEST_THE_IDEA) but the conversation is clearly complete.
+  if (studentClaims.length >= 6) {
+    return doClose();
+  }
+
+  // Normal close: depth signals confirm sufficient understanding.
   if (hasExample && hasExplanation
-      && ((understandingLevel ?? 1) >= 3 || studentClaims.length >= 6)
+      && (understandingLevel ?? 1) >= 3
       && studentClaims.length >= 4) {
-    // Pre-close: if Pupil hasn't assembled the full picture recently, do that
-    // first so the student sees everything pulled together before the summary.
-    const hadRecentAssembly = lastThreeMoves.some(m =>
-      ['BUILD_ROUGH_MODEL', 'COMPARE_TWO_IDEAS'].includes(m)
-    );
-    return hadRecentAssembly ? 'SUMMARIZE_AND_CLOSE' : 'BUILD_ROUGH_MODEL';
+    return doClose();
   }
 
   const msg = studentMessage.trim().toLowerCase();
@@ -108,8 +113,10 @@ export function selectMove(state, studentMessage = '') {
       : pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'TEST_THE_IDEA'], lastThreeMoves);
   }
 
-  // ── First test gate — fire once student has 2+ claims ────────────────────────
-  if (!lastThreeMoves.includes('TEST_THE_IDEA') && studentClaims.length >= 2) {
+  // ── First test gate — early conversation only ────────────────────────────────
+  // Only fires when claims < 5 — once the conversation is in close territory
+  // (5+ claims) re-running test scenarios extends conversations unnecessarily.
+  if (!lastThreeMoves.includes('TEST_THE_IDEA') && studentClaims.length >= 2 && studentClaims.length < 5) {
     return 'TEST_THE_IDEA';
   }
 

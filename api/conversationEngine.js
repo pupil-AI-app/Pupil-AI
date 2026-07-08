@@ -290,12 +290,14 @@ Good examples (style only — always use what the student has actually taught, n
 
 State it as a statement. Do not ask "why" — name what feels off, then leave space for the student to resolve it.`,
 
-    MAKE_PREDICTION: `Based on what the student has taught you, predict what should follow. State the prediction directly — don't ask the student to predict for you.
+    MAKE_PREDICTION: `Take the specific claim the student just made and push it one step further — state where that exact logic leads. Do not jump to a sub-topic, edge case, or property the student has not mentioned.
 
-Good examples:
-• (AI chatbots) "So then if the training data had really strange patterns in it, the chatbot should produce strange outputs — without knowing why."
-• (Macbeth) "So if the witches hadn't shown up, Macbeth might never have acted on the ambition — the prophecy was what turned a feeling into a plan."
-• (Multiplication) "So then 100 x 0 should be zero — because there are no groups with anything in them."
+CRITICAL: The prediction must follow directly from what the student actually said in this conversation. If the student said "multiplication is like addition," predict something about THAT relationship — not about multiplying by zero, not about groups, not about any other property you know exists. Stay inside the territory the student has mapped.
+
+Good examples (each extends the student's exact claim, nothing more):
+• (AI chatbots, student said "it learns patterns from text") "So then if the training data had really strange patterns in it, the chatbot should produce strange outputs — without knowing why."
+• (Macbeth, student said "the witches give him ambition") "So if the witches hadn't shown up, Macbeth might never have acted on the ambition — the prophecy was what turned a feeling into a plan."
+• (Multiplication, student said "it's like addition") "So 3 times 4 should be the same as adding 3 four times — like 3 plus 3 plus 3 plus 3. Fix that if I'm wrong."
 
 State it as Pupil's prediction. Do not ask the student to confirm with a yes/no question. You may add "Fix that if I'm wrong." if needed.`,
 

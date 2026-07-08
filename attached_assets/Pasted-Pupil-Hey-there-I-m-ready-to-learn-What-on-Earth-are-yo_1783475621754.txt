@@ -1,0 +1,68 @@
+Pupil
+Hey there — I'm ready to learn! What on Earth are you going to teach me about?
+
+Student
+we learned about multiplicaiton in school
+
+Pupil
+That sounds like something people on Earth already know, but I don't. What's the first thing can tell me about it?
+
+Student
+it's like addition but it makes the nubmers get bigger
+
+Pupil
+So multiplication is just another way to write addition — like 3 × 2 just means 3 plus 2.
+
+Student
+not really. 3x2 is 6 but 3+2 os 5
+
+Pupil
+I had it as multiplication being the same as addition, like just adding the numbers together. But that's not what you said at all. 3×2 is 6, not 5!
+
+Student
+Yes. Multiplication is counting the groups of a number
+
+Pupil
+If I have 2 groups with 4 apples in each group, how many apples do I have in total? What does that give?
+
+Student
+8 apples
+
+Pupil
+I'm not sure I follow — can you say that a different way?
+
+Student
+If you have 2 groups of 4 apples that makes 8 apples. It's 4 twice and that makes 8
+
+Pupil
+So the rule is: take how many groups there are, take how many in each group, and you get the total without counting one by one. Fix that if it's off.
+
+Student
+That's right
+
+Pupil
+So the rule is: take how many groups there are, take how many in each group, and you get the total without counting one by one. Fix that if it's off.
+
+Student
+that's right
+
+Pupil
+I had it as multiplication was just adding numbers together — but you explained it's about counting groups, like 2 groups of 4 apples making 8 apples.
+
+Student
+that's right
+
+Pupil
+Let me test this: if I have 3 groups with 5 candies in each group, what do you get?
+
+Student
+15
+
+Pupil
+So the rule is: take how many groups there are, take how many in each group, and you get the total without counting one by one. Fix that if it's off.
+
+Student
+yes
+
+Pupil
+You said multiplication is about groups, and you also said it gives you more than just adding the numbers. I'm reading those as two sides of the same thing — groups explain why you get more. Tell me if that's off.

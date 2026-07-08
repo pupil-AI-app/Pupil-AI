@@ -105,13 +105,15 @@ export function selectMove(state, studentMessage = '') {
   }
 
   // ── Support: low-information agreement — student confirms but adds nothing ──
-  // When the model is already rich (3+ claims), route toward assembly moves so
-  // Pupil consolidates what it heard rather than pressing again with another
-  // mistake. When content is thin, a mistake gives the student something to
-  // correct and advances the model.
-  if (/^(yes|yeah|yep|yup|mhm|mm-?hmm|okay|ok|sure|right|correct|i guess|kind of|sort of|i think so|maybe|probably|i suppose|uh huh|true)\.?$/.test(msg)) {
+  // When the model is already rich (3+ claims), probe an edge case or compare
+  // ideas rather than reassembling the same model the student just confirmed.
+  // BUILD_ROUGH_MODEL is excluded here — it regenerates identical text when
+  // nothing new was taught, which the enforcer catches once but can't prevent
+  // across multiple turns. When content is thin, a mistake gives the student
+  // something to correct and advances the model.
+  if (/^(yes|yeah|yep|yup|mhm|mm-?hmm|okay|ok|sure|right|correct|that'?s right|that'?s correct|that'?s it|you'?re right|you got it|that sounds right|i guess|kind of|sort of|i think so|maybe|probably|i suppose|uh huh|true)\.?$/.test(msg)) {
     return studentClaims.length >= 3
-      ? pickFrom(['BUILD_ROUGH_MODEL', 'COMPARE_TWO_IDEAS', 'MAKE_PREDICTION'], lastThreeMoves)
+      ? pickFrom(['FIND_WEAK_SPOT', 'COMPARE_TWO_IDEAS', 'MAKE_PREDICTION'], lastThreeMoves)
       : pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'APPLY_TO_NEW_CASE'], lastThreeMoves);
   }
 

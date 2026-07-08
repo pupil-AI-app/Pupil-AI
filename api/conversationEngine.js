@@ -100,7 +100,7 @@ export function selectMove(state, studentMessage = '') {
   // ── Student-done signal ───────────────────────────────────────────────────────
   // "I think that's basically it", "pretty much it", "you've got it" etc. are
   // explicit completion signals the agreement regex (single-word) doesn't catch.
-  const DONE_SIGNAL = /\b(basically it|pretty much it|mostly right|essentially right|that'?s all|you'?ve got it|that covers it|that'?s everything|that'?s (?:the |all the )?(?:main|key|important) (?:idea|point|part))\b/i;
+  const DONE_SIGNAL = /\b(basically (?:it|right|correct)|pretty much (?:it|right|correct)|mostly (?:it|right|correct)|essentially (?:it|right|correct)|that'?s all|you'?ve got it|that covers it|that'?s everything|that'?s (?:the |all the )?(?:main|key|important) (?:idea|point|part))\b/i;
   if (DONE_SIGNAL.test(studentMessage) && studentClaims.length >= 3) {
     return doClose();
   }
@@ -671,8 +671,16 @@ export async function runConversationGovernor({ message, history = [], conversat
       } else {
         console.warn(`[unified] attempt ${attempt} failed (${check.reason}) — retrying`);
         if (attempt === 2) {
-          reply = candidate;
-          console.warn('[unified] using rule-violating reply as last resort');
+          // Near-repeats must never be used as a last resort — it would
+          // surface the identical reply to the student. Leave reply empty so
+          // the generic fallback fires instead.
+          const isRepeat = check.reason.includes('repeat');
+          if (!isRepeat) {
+            reply = candidate;
+            console.warn('[unified] using rule-violating reply as last resort');
+          } else {
+            console.warn('[unified] near-repeat on both attempts — suppressing, will use fallback');
+          }
         }
       }
     } catch (err) {

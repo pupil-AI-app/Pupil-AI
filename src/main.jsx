@@ -200,6 +200,7 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
   const [avatarState, setAvatarState] = useState('CURIOUS');
   const [understandingPct, setUnderstandingPct] = useState(1);
   const [conversationComplete, setConversationComplete] = useState(false);
+  const [conversationEnded, setConversationEnded] = useState(false);
   const [closeReply, setCloseReply] = useState('');
   const [reportLoading, setReportLoading] = useState(false);
   const [sessionStartTime] = useState(() => Date.now());
@@ -271,7 +272,7 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
 
   async function sendMessage() {
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || loading || conversationEnded) return;
 
     const studentMessage = { role: 'student', text };
     const next = [...messages, studentMessage];
@@ -301,6 +302,7 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
       }
       if (data.conversationState?.lastThreeMoves?.includes('CLOSE_GRACEFULLY')) {
         setCloseReply(reply);
+        setConversationEnded(true);
         setTimeout(() => setConversationComplete(true), 6000);
       }
     } catch {
@@ -370,9 +372,9 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
               placeholder={loading ? 'Pupil is thinking…' : 'Type your message...'}
-              disabled={loading}
+              disabled={loading || conversationEnded}
             />
-            <button className="send" onClick={sendMessage} aria-label="Send" disabled={loading}>
+            <button className="send" onClick={sendMessage} aria-label="Send" disabled={loading || conversationEnded}>
               <img src="/triskelion.png" alt="" style={{ width: 36, height: 36, borderRadius: '50%', display: 'block' }} />
             </button>
           </div>

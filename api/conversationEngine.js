@@ -64,7 +64,7 @@ export function selectMove(state, studentMessage = '') {
   }
 
   // ── Close path ───────────────────────────────────────────────────────────────
-  if (lastThreeMoves.includes('SUMMARIZE_AND_CLOSE')) {
+  if (lastThreeMoves.includes('SUMMARIZE_AND_CLOSE') || lastThreeMoves.includes('CLOSE_GRACEFULLY')) {
     return 'CLOSE_GRACEFULLY';
   }
   // hasExample + hasExplanation + sufficient depth → wind down toward close.

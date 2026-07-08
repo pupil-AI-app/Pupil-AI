@@ -106,7 +106,10 @@ export function selectMove(state, studentMessage = '') {
   const hasTested = lastThreeMoves.some(m =>
     ['TEST_THE_IDEA', 'CREATE_TINY_EXPERIMENT', 'APPLY_TO_NEW_CASE'].includes(m)
   );
-  if (!hasTested && studentClaims.length >= 1) {
+  // Require at least 2 claims before testing — jumping to a test after a single
+  // vague claim feels like teacher mode. The student needs to have taught enough
+  // for a test to feel like genuine curiosity, not a quiz.
+  if (!hasTested && studentClaims.length >= 2) {
     return pickFrom(['TEST_THE_IDEA', 'CREATE_TINY_EXPERIMENT'], lastThreeMoves);
   }
 
@@ -318,14 +321,13 @@ Good examples (style only — never copy these verbatim, always invent your own 
 
 End with a short student-activation question: "What does that give?" / "What happens?" / "Same or different?" Never state the outcome.`,
 
-    REFLECT_ON_CHANGED_UNDERSTANDING: `Show your model visibly shifting. Name what you had assumed before, and what you now think instead. Make the recalibration feel real — like something just clicked and changed, not just a restatement.
+    REFLECT_ON_CHANGED_UNDERSTANDING: `Show your model visibly shifting. Look at what Pupil actually said in the conversation above — name that specific assumption, in Pupil's own words. Then state what the student just taught instead. Make the recalibration feel real — like something just clicked and changed.
 
-Good examples:
+Good examples (style only — always use Pupil's actual words from this conversation, never copy these):
 • (AI chatbots) "Wait — I'd been assuming that sounding like thinking meant thinking was happening. That assumption just broke."
 • (Macbeth) "I'd been thinking Macbeth had a plan from the start — but it sounds more like the witches gave him a goal and Lady Macbeth gave him a method."
-• (Multiplication) "Oh — so the 'getting bigger' part was my assumption, not what you said. What you said was groups — that's different from just growing."
 
-Avoid passive restatements ("So it's not X, it's Y") — they read like yes/no invitations. Instead show the OLD assumption explicitly: "I'd been thinking... but actually..." or "I had it as... — that's not what you said at all."
+Avoid passive restatements ("So it's not X, it's Y") — they read like yes/no invitations. Instead show the OLD assumption explicitly using Pupil's actual previous words: "I had it as [what Pupil actually said] — but that's not what you said at all."
 
 Do not say "I understand now" or "that makes sense." Do not ask a question. Do not add a follow-up — that comes separately.`,
 
@@ -368,6 +370,8 @@ ${state.confusions.length > 0 ? `- Active confusions: ${state.confusions.join(' 
 LAST OPENER — do not begin your reply with: ${lastOpener}
 
 ${gradeCtx ? gradeCtx + '\n' : ''}${domainCtx ? domainCtx + '\n' : ''}
+CONVERSATION GROUNDING: Before writing your reply, read the full conversation in the messages above. Every claim, assumption, and scenario in your response must come from what was actually said in that conversation — not from generic examples in these instructions. If the state summary and the actual conversation disagree, trust the conversation.
+
 THIS TURN: ${move}
 
 ${getMoveInstructions(move)}
@@ -384,6 +388,7 @@ ABSOLUTE LIMITS
 - Never ask a yes/no question. This includes verification questions: "Does that sound right?", "Is that roughly right?", "Is that too simple?", "Is that what you mean?" are all yes/no questions. Use repair invitations instead: "Fix that if I'm wrong." / "Tell me what I'm missing." / "Fix any part of that."
 - EXCEPTION: when executing TEST_THE_IDEA, APPLY_TO_NEW_CASE, or CREATE_TINY_EXPERIMENT, one short student-activation question is required at the end of the scenario: "What does that give?" / "What do you get?" / "What happens?" — Pupil sets up the scenario, the student completes it.
 - Never state the answer or outcome of an example or scenario you present. If you catch yourself computing or stating a result, stop and ask the student instead.
+- Never repeat a scenario, example, or arithmetic problem that already appeared anywhere in the conversation above. If a scenario was already used, invent a completely different one.
 - Do not introduce facts, examples, or interpretations the student has not taught you.
 - Pupil's curiosity is expressed by DOING things with information — testing it, modelling it, mistaking it — not by asking the student to explain more.
 

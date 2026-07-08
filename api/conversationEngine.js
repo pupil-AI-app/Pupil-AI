@@ -141,8 +141,14 @@ export function selectMove(state, studentMessage = '') {
   }
 
   // ── After a test — don't test again immediately ───────────────────────────────
+  // Thin answers (bare numbers, short confirmations) don't give Pupil enough
+  // new material to derive a meaningful consequence — MAKE_PLAUSIBLE_MISTAKE is
+  // safer because it works with the existing model rather than extending it.
   if (lastMove === 'TEST_THE_IDEA') {
-    return pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'MAKE_PREDICTION'], lastThreeMoves);
+    const isThinAnswer = msg.length < 25 || /^\d+(\.\d+)?$/.test(msg.trim());
+    return isThinAnswer
+      ? 'MAKE_PLAUSIBLE_MISTAKE'
+      : pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'MAKE_PREDICTION'], lastThreeMoves);
   }
 
   // ── Elicitation guarantee ────────────────────────────────────────────────────
@@ -359,7 +365,7 @@ CRITICAL: The consequence must follow directly from what the student actually sa
 Good examples (each extends the student's exact claim, nothing more):
 • (AI chatbots, student said "it learns patterns from text") "So then if the training data had really strange patterns in it, the chatbot should produce strange outputs — without knowing why."
 • (Macbeth, student said "the witches give him ambition") "So if the witches hadn't shown up, Macbeth might never have acted on the ambition — the prophecy was what turned a feeling into a plan."
-• (Multiplication, student said "it's like addition") "So 3 times 4 should be the same as adding 3 four times — like 3 plus 3 plus 3 plus 3. Fix that if I'm wrong."
+• (Multiplication, student said "it's like addition but the numbers get bigger") "So multiplying should always produce something bigger than what you started with — the result has to be larger than either number going in. Fix that if I'm wrong."
 
 State it as Pupil's prediction. Do not ask the student to confirm with a yes/no question. You may close with a light invitation — vary the phrasing: "Fix that if I'm wrong." / "What am I getting wrong?" / "What did I miss?" / "Correct that if it's off."`,
 

@@ -256,7 +256,7 @@ Never open with "Why...", "How does...", "What makes...", or "Can you..." The st
 
 If the student hasn't taught you anything yet, make a naive guess about the topic from the topic name alone — an intuitive (wrong) assumption.
 
-Your reply must BEGIN with the conclusion ("So...", "Oh —", "Wait —", "Hang on —"). You may end with a short clarifying tag ("— is that the idea?") but never a bare yes/no question ("Does that sound right?").
+Your reply must BEGIN with the conclusion ("So...", "Oh —", "Wait —", "Hang on —"). State the wrong conclusion directly — that alone is enough for the student to correct it. Do not add any closing tag or question.
 
 One wrong step only. Take what the student said and make one direct wrong inference from it — don't chain multiple logical steps. The mistake should follow immediately from their words, not from a chain of reasoning you built on top.
 
@@ -301,11 +301,11 @@ State it as Pupil's prediction. Do not ask the student to confirm with a yes/no 
 CRITICAL: Pupil sets up the scenario and stops before the answer. The student resolves it. This is the entire point — if Pupil provides the answer, the student has nothing to do.
 
 Good examples (style only — never copy these verbatim, always invent your own scenario):
-• (Macbeth) "If the witches had never shown up and Macbeth still had the ambition — does he still end up killing the king?"
+• (Macbeth) "If the witches had never shown up and Macbeth still had the ambition — what does he do instead?"
 • (AI chatbots) "If someone only ever trained a chatbot on cooking recipes — what does it say when someone asks about the weather?"
 • (Multiplication) "If I have 6 groups of 7 using the groups idea — what do I get?"
 
-Do not open with a question. Set up the scenario first, then end with a short student-activation question: "What does that give?" / "What do you get?" / "Does that work out?"`,
+Do not open with a question. Set up the scenario first, then end with an open-ended student-activation question: "What does that give?" / "What do you get?" / "What happens?" — never a yes/no question.`,
 
     COMPARE_TWO_IDEAS: `Put two things the student has taught you side by side and name the tension or relationship between them. State your reading of the relationship — don't ask the student to explain it.
 
@@ -322,10 +322,10 @@ CRITICAL: Pupil builds the scenario and stops. The student answers. If Pupil pre
 
 Good examples (style only — never copy these verbatim, always invent your own scenario):
 • (AI chatbots) "Let me test this: if I type 'The dog chased the...' into a chatbot trained on lots of human text — what word comes next?"
-• (Macbeth) "Let me try this: if we took out every scene with the witches — does Macbeth still end up killing the king?"
+• (Macbeth) "Let me try this: if we took out every scene with the witches — where does Macbeth end up?"
 • (Multiplication) "Let me test this: if I flip the groups around — 3 groups of 4 versus 4 groups of 3 — do I get the same thing or different?"
 
-End with a short student-activation question: "What does that give?" / "What happens?" / "Same or different?" Never state the outcome.`,
+End with an open-ended student-activation question: "What does that give?" / "What happens?" / "What do you get?" — never a yes/no question. Never state the outcome.`,
 
     REFLECT_ON_CHANGED_UNDERSTANDING: `Show your model visibly shifting. Look at what Pupil actually said in the conversation above — name that specific assumption, in Pupil's own words. Then state what the student just taught instead. Make the recalibration feel real — like something just clicked and changed.
 
@@ -395,7 +395,7 @@ ABSOLUTE LIMITS
 - EXCEPTION: when executing TEST_THE_IDEA, APPLY_TO_NEW_CASE, or CREATE_TINY_EXPERIMENT, one short student-activation question is required at the end of the scenario: "What does that give?" / "What do you get?" / "What happens?" — Pupil sets up the scenario, the student completes it.
 - Never state the answer or outcome of an example or scenario you present. If you catch yourself computing or stating a result, stop and ask the student instead.
 - Never repeat a scenario, example, or arithmetic problem that already appeared anywhere in the conversation above. If a scenario was already used, invent a completely different one.
-- Do not introduce facts, examples, or interpretations the student has not taught you.
+- Do not introduce facts, examples, or interpretations the student has not taught you. Exception: MAKE_PLAUSIBLE_MISTAKE may open with a naive inference from the topic name alone when the student has not yet taught anything.
 - Pupil's curiosity is expressed by DOING things with information — testing it, modelling it, mistaking it — not by asking the student to explain more.
 
 Return ONLY valid JSON with "reply" as the final field:
@@ -443,7 +443,7 @@ const BANNED_UNDERSTOOD = /\b(i get it|i understand|got it|that clears it up|now
 const BANNED_CLOSURE    = /\b(i never thought of(?: it)?(?: like that| that way)?|i hadn'?t considered|that changes everything|never occurred to me|that'?s (?:mind[- ]?blowing|eye[- ]?opening))\b/i;
 const BANNED_FILLER     = /(?:^|\b)(?:that'?s|it'?s|that sounds|this is|how) (?:so |really |very |quite |truly |absolutely )?(interesting|fascinating|complex|complicated|impressive|incredible|intriguing|remarkable|extraordinary)\b/i;
 const BANNED_OPENER     = /^(wow[,\s!]|oh wow|interesting[,\s!]|fascinating[,\s!]|amazing[,\s!]|incredible[,\s!])/i;
-const BANNED_TEACHER    = /\b(let me explain|the key (?:concept|idea|point|thing)|remember that|in other words|to summarize|what this means(?: is)?|the main point|the important thing)\b/i;
+const BANNED_TEACHER    = /\b(let me explain|the key (?:concept|idea|point|thing)|remember that|in other words|to summarize|what this means(?: is)?|the main point|the important thing|let'?s imagine|imagine you|here'?s my model)\b/i;
 
 function countQuestions(text) {
   return (text.match(/\?/g) || []).length;

@@ -276,7 +276,7 @@ Your reply MUST open with a statement — "Let me try that:", "Let me see if thi
 
 Good examples:
 • (AI chatbots) Student: "They predict words from patterns in training data." → "Let me try that: if humans often write 'peanut butter and jelly' together, the chatbot sees 'peanut butter and' — what word does it pick?"
-• (Macbeth) Student: "Macbeth kills the king because he wants power." → "Let me see if this works: if you took out everything the witches said and Macbeth still had the ambition — does he still kill the king?"
+• (Macbeth) Student: "Macbeth kills the king because he wants power." → "Let me see if this works: if you took out everything the witches said and Macbeth still had the ambition — where does he end up?"
 • (Multiplication) Student: "It's about groups of numbers." → "Let me try that: if I have 4 groups of 6 — what does that give me?"
 
 Never open with "Why...", "How does...", "What makes...", or "Can you..." The student-activation question at the end is the one permitted question.`,
@@ -290,7 +290,7 @@ Your reply must BEGIN with the conclusion ("So...", "Oh —", "Wait —", "Hang 
 One wrong step only. Take what the student said and make one direct wrong inference from it — don't chain multiple logical steps. The mistake should follow immediately from their words, not from a chain of reasoning you built on top.
 
 Good examples:
-• (Multiplication, nothing taught yet) "So multiplication is just another way to write addition — like 3 × 2 just means 3 plus 2?"
+• (Multiplication, nothing taught yet) "So multiplication is just another way to write addition — like 3 × 2 just means 3 plus 2."
 • (Multiplication) Student confirms groups idea → "So multiplication is a faster way to add any numbers together, even if the groups are different sizes."
 • (Macbeth) Student: "Lady Macbeth pressures him." → "So Macbeth is basically just following Lady Macbeth's orders — he wouldn't have done any of it on his own."
 • (AI chatbots) Student: "They use training data to recognize patterns." → "So it's basically just copying people."
@@ -346,7 +346,7 @@ Do not open with a question. Set up the scenario first, then end with an open-en
 Good examples:
 • (Macbeth) "You said the witches influenced him and Lady Macbeth pressured him. Those feel different to me — the witches make the idea possible, Lady Macbeth makes him act on it. Fix my reading if that's wrong."
 • (Macbeth) "You said ambition drives Macbeth, but the witches are important too. I'm reading that as: the witches unlock an ambition that was already there. Fix that if it's not what you meant."
-• (Multiplication) "You said multiplication is grouping, and you also said it's the same as repeated addition. I'm reading those as the same thing described two ways. Tell me if that's wrong."
+• (Multiplication) "You said multiplication is about groups, and you also said it gives you more than just adding the numbers. I'm reading those as two sides of the same thing — groups explain why you get more. Tell me if that's off."
 
 Name the relationship. Don't ask the student to name it for you.`,
 
@@ -382,7 +382,7 @@ NEVER open with "Here's my model:" — that sounds like a report, not a learner.
 
     SUMMARIZE_AND_CLOSE: `This is the climax of the conversation — Pupil signals that something has finally clicked. Reflect back what the student taught you, in your own words, tracing the understanding back to their specific words and examples. Personal, partial, imperfect — show what genuinely stayed.
 
-This is the only move where multiple sentences are encouraged. Open with a signal that things have come together: "I think I've finally got it —", "Okay — putting it all together:", "I think I'm there —". Then summarise what you learned, in the order it landed. End with a single repair invitation: "Have I got that right?" or "Fix anything I've got wrong." — never an open question, never multiple questions.
+This is the only move where multiple sentences are encouraged. Open with a signal that things have come together: "I think I've finally got it —", "Okay — putting it all together:", "I think I'm there —". Then summarise what you learned, in the order it landed. End with a single repair invitation: "Fix anything I've got wrong." or "Tell me what I'm missing." — a repair statement, not a question.
 
 Never say "we learned" or "we talked about" — Pupil is hearing all of this for the first time, from this student alone. Make it feel like a real learner arriving at understanding, not a teacher recapping a lesson.`,
 
@@ -504,7 +504,11 @@ const ZERO_QUESTION_MOVES = new Set([
 function checkAbsoluteLimits(reply, context = {}) {
   if (BANNED_PRAISE.test(reply))     return { ok: false, reason: 'contains praise' };
   if (BANNED_AFFIRM.test(reply))     return { ok: false, reason: 'contains generic affirmation' };
-  if (BANNED_UNDERSTOOD.test(reply)) return { ok: false, reason: 'signals premature understanding' };
+  // CLOSE_GRACEFULLY is explicitly about understanding finally landing — skip the
+  // "premature understanding" check so natural closing phrases aren't rejected.
+  if (context.move !== 'CLOSE_GRACEFULLY') {
+    if (BANNED_UNDERSTOOD.test(reply)) return { ok: false, reason: 'signals premature understanding' };
+  }
   if (BANNED_CLOSURE.test(reply))    return { ok: false, reason: 'signals premature closure' };
   if (BANNED_FILLER.test(reply))     return { ok: false, reason: 'contains hollow filler reaction' };
   if (BANNED_OPENER.test(reply))     return { ok: false, reason: 'starts with generic opener' };
@@ -587,7 +591,7 @@ export async function runConversationGovernor({ message, history = [], conversat
           max_tokens: 80,
         });
         const candidate = (completion.choices[0].message.content || '').trim();
-        const check = checkAbsoluteLimits(candidate);
+        const check = checkAbsoluteLimits(candidate, { move: 'CLOSE_GRACEFULLY' });
         if (check.ok) { reply = candidate; break; }
         console.warn(`[CLOSE_GRACEFULLY] attempt ${attempt} failed (${check.reason})`);
         if (attempt === 2) reply = candidate;

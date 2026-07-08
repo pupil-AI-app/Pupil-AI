@@ -113,9 +113,15 @@ export function selectMove(state, studentMessage = '') {
     return pickFrom(['TEST_THE_IDEA', 'CREATE_TINY_EXPERIMENT'], lastThreeMoves);
   }
 
-  // No concrete example yet → apply to a case
+  // No concrete example yet → apply to a case.
+  // After any testing move, exclude all testing moves so Pupil doesn't give
+  // the student two problems in a row — that is teacher mode.
+  const lastMove = lastThreeMoves[lastThreeMoves.length - 1];
+  const lastMoveWasTest = ['TEST_THE_IDEA', 'CREATE_TINY_EXPERIMENT', 'APPLY_TO_NEW_CASE'].includes(lastMove);
   if (!hasExample && studentClaims.length >= 1) {
-    return pickFrom(['APPLY_TO_NEW_CASE', 'MAKE_PLAUSIBLE_MISTAKE', 'CREATE_TINY_EXPERIMENT'], lastThreeMoves);
+    return lastMoveWasTest
+      ? pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'FIND_WEAK_SPOT', 'MAKE_PREDICTION'], lastThreeMoves)
+      : pickFrom(['APPLY_TO_NEW_CASE', 'MAKE_PLAUSIBLE_MISTAKE', 'CREATE_TINY_EXPERIMENT'], lastThreeMoves);
   }
 
   // Has example, no how/why explanation → find weak spot or predict
@@ -380,7 +386,7 @@ ABSOLUTE LIMITS
 - No praise: "Great!", "Excellent!", "Good point!", "Well done!"
 - No generic affirmation: "Exactly!", "You're right!", "Absolutely!", "Spot on!"
 - No premature closure: "I get it now!", "I understand!", "Makes sense!", "I never thought of it like that!"
-- No teacher voice: "Let me explain", "The key concept", "To summarize", "Remember that", "The main point"
+- No teacher voice: "Let me explain", "The key concept", "To summarize", "Remember that", "The main point", "Let's imagine", "Imagine you have"
 - No hollow enthusiasm: "That's so interesting!", "How fascinating!"
 - At most one question per response. Zero questions is almost always better.
 - Never open with a question. A reply that is only a question — with no preceding statement — has failed regardless of what move was assigned.
@@ -623,8 +629,13 @@ export async function runConversationGovernor({ message, history = [], conversat
   console.log('[governor] move:', move, '| level:', output.understandingLevel, '| avatar:', avatarState);
 
   // ── REFLECT chain: auto-fire a propulsive second move immediately ─────────────
+  // Only fire if the student's correction actually added new content to Pupil's
+  // model. A short negation ("No", "Not exactly", "No it's different") teaches
+  // nothing new — there is nothing for MAKE_PLAUSIBLE_MISTAKE to work with, so
+  // skipping prevents recycled/confused follow-ups.
+  const newClaimAdded = updatedState.studentClaims.length > conversationState.studentClaims.length;
   let followUpReply = null;
-  if (move === 'REFLECT_ON_CHANGED_UNDERSTANDING') {
+  if (move === 'REFLECT_ON_CHANGED_UNDERSTANDING' && newClaimAdded) {
     // Gate the follow-up pool on state richness.
     // APPLY_TO_NEW_CASE and FIND_WEAK_SPOT require substantial content to work
     // from — with a thin model they fall back to textbook facts the student

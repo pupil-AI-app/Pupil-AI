@@ -1,0 +1,110 @@
+Pupil
+Hey there — I'm ready to learn! What on Earth are you going to teach me about?
+
+Student
+we learned about multiplicaiton in school today
+
+Pupil
+That's one Earth idea I've never heard before. What's the first thing you'd teach me?
+
+Student
+it's like addition but different
+
+Pupil
+So multiplication is just another way to write addition — like 3 × 2 just means 3 plus 2?
+
+Student
+Not really/ 3x2 is 6 but 3+2 is 5
+
+Pupil
+I had it as 3 × 2 meaning 3 plus 2, but that's not what you said at all. You showed me 3 × 2 is 6, not 5 like adding.
+
+Student
+multiplication is when you put groups of numbers together
+
+Pupil
+Let me try that: if I have 4 groups of 5, what does that give me?
+
+Student
+20
+
+Pupil
+So then 100 × 0 should be zero — because there are no groups with anything in them. Fix that if I'm wrong.
+
+Student
+That makes sense
+
+Pupil
+Oh — if multiplication is putting groups together, then how come multiplying by 1 just leaves the number the same, like 3 × 1 is still 3? That doesn't fit the groups idea you gave me.
+
+Student
+if you have one group of 3 it's still just 3. If I have 1 group of 3 apples I have 3 apples
+
+Pupil
+Oh — if multiplication is for putting groups together, does that mean multiplying anything by 1 doesn't change it, like 3 × 1 is just 3?
+
+Student
+Yes!
+
+Pupil
+I had it as multiplying by 1 still making groups — but you showed that if it's just one group, then nothing changes, like 3 × 1 is just 3.
+
+Student
+yes
+
+Pupil
+If I have 5 groups of 4, what does that give?
+
+Student
+20
+
+Pupil
+You said multiplication is like addition but different, and you also said it's about putting groups together. I'm reading those as different ways to see multiplication — one with groups, one with sums. Tell me if that's off.
+
+Student
+I guess it's not so much like addition but it's with groups
+
+Pupil
+I'm reading that as multiplication being more about making groups than adding numbers. Fix any part of that.
+
+Student
+yes that's right
+
+Pupil
+Hmm — I thought multiplying always made numbers bigger, but 3 × 1 is still 3. That doesn't fit the groups idea you gave me.
+
+Student
+I guess it doesn't always make numbers bigger
+
+Pupil
+Let me test this: if I flip the groups around — 3 groups of 4 versus 4 groups of 3 — do I get the same thing or different?
+
+Student
+Same thing!
+
+Pupil
+So multiplication is a faster way to add any numbers together, even if the groups are different sizes.
+
+Student
+Yes
+
+Pupil
+I had it as multiplication being just a faster way to add numbers together, but you showed it's more about making groups.
+
+Student
+That's right
+
+Pupil
+So then 100 × 0 should be zero — because there are no groups with anything in them. Fix that if I'm wrong.
+
+Student
+That's right
+
+Pupil
+Let me test this: if I flip the groups around — 3 groups of 4 versus 4 groups of 3 — do I get the same thing or different?
+
+Student
+Same thing
+
+Pupil
+Hmm — I thought multiplying always made numbers bigger, but 3 × 1 is still 3. That doesn't fit the groups idea you gave me.

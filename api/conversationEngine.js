@@ -58,6 +58,8 @@ export function selectMove(state, studentMessage = '') {
     studentClaims, lastThreeMoves, hasExample, hasExplanation,
     hasCausalLink, understandingLevel,
   } = state;
+  const testIdeaCount = state.testIdeaCount || 0;
+  const testIdeaEligible = testIdeaCount < 2;
 
   // ── No claims yet ────────────────────────────────────────────────────────────
   if (studentClaims.length === 0 && !lastThreeMoves.includes('AWAIT_FIRST_IDEA')) {
@@ -101,7 +103,8 @@ export function selectMove(state, studentMessage = '') {
 
   // ── Student stuck ─────────────────────────────────────────────────────────────
   if (/\b(i'?m not sure|i don'?t know|i can'?t (?:explain|describe|say)|idk|don'?t know how to|don'?t know where to)\b|^(not sure|no idea|dunno|not really|it'?s (?:difficult|hard) to (?:explain|describe|say)|hard to (?:explain|describe|say)|i'?m not sure)/.test(msg)) {
-    return pickFrom(['TEST_THE_IDEA', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves);
+    const stuckPool = testIdeaEligible ? ['TEST_THE_IDEA', 'MAKE_PLAUSIBLE_MISTAKE'] : ['MAKE_PLAUSIBLE_MISTAKE'];
+    return pickFrom(stuckPool, lastThreeMoves);
   }
 
   // ── Agreement — student confirms but adds nothing ─────────────────────────────
@@ -111,14 +114,13 @@ export function selectMove(state, studentMessage = '') {
   if (/^(yes|yeah|yep|yup|mhm|mm-?hmm|okay|ok|sure|right|correct|that'?s right|that'?s correct|that'?s it|you'?re right|you got it|that sounds right|i guess|kind of|sort of|i think so|maybe|probably|i suppose|uh huh|true)\.?$/.test(msg)) {
     return studentClaims.length >= 3
       ? pickFrom(['FIND_WEAK_SPOT', 'COMPARE_TWO_IDEAS', 'MAKE_PREDICTION'], lastThreeMoves)
-      : pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'TEST_THE_IDEA'], lastThreeMoves);
+      : pickFrom(testIdeaEligible ? ['MAKE_PLAUSIBLE_MISTAKE', 'TEST_THE_IDEA'] : ['MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves);
   }
 
   // ── Test gate — at most 2 uses per session, early conversation only ──────────
-  // testIdeaCount tracks lifetime uses; lastThreeMoves prevents back-to-back.
+  // testIdeaEligible (defined at top) tracks lifetime uses across ALL branches.
   // claims < 5 keeps it out of the close zone.
-  const testIdeaCount = state.testIdeaCount || 0;
-  if (testIdeaCount < 2 && !lastThreeMoves.includes('TEST_THE_IDEA')
+  if (testIdeaEligible && !lastThreeMoves.includes('TEST_THE_IDEA')
       && studentClaims.length >= 2 && studentClaims.length < 5) {
     return 'TEST_THE_IDEA';
   }

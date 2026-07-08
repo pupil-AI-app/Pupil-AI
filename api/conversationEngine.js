@@ -436,13 +436,15 @@ function buildClosePrompt(state, grade) {
 
 The student taught you about: ${state.topic || 'this concept'}, covering: ${claims}.
 
+This is Pupil's final message. It should feel like a genuine, personal goodbye from a learner who just had something click — warm, specific, a little imperfect. Reference one concrete thing the student actually said or taught. Not a list — one thing that genuinely landed.
+
 ABSOLUTE LIMITS:
-- No cheerleader phrases: "Keep being awesome!", "You're amazing!", "Magic [topic] speed!"
+- No cheerleader phrases: "Keep being awesome!", "You're amazing!", "You're a great teacher!"
 - No emojis
-- No generic closings: "Thanks!", "I understand now!", "I never thought of it like that!"
+- No generic closings: "Thanks!", "I understand now!", "I never thought of it like that!", "That was so helpful!"
 - No "we" — Pupil was never in the student's class. Pupil heard all of this for the first time just now.
-- One specific thing from this conversation. Not a general statement about the topic.
-${gradeCtx ? gradeCtx + '\n' : ''}15–30 words. Write ONLY Pupil's reply.`;
+- No "Great job" or any praise directed at the student
+${gradeCtx ? gradeCtx + '\n' : ''}25–45 words. Write ONLY Pupil's reply.`;
 }
 
 // ─── Layer 3: Light enforcer ─────────────────────────────────────────────────

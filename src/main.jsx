@@ -200,6 +200,7 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
   const [avatarState, setAvatarState] = useState('CURIOUS');
   const [understandingPct, setUnderstandingPct] = useState(1);
   const [conversationComplete, setConversationComplete] = useState(false);
+  const [closeReply, setCloseReply] = useState('');
   const [reportLoading, setReportLoading] = useState(false);
   const [sessionStartTime] = useState(() => Date.now());
   const [lastModel, setLastModel] = useState(null);
@@ -299,6 +300,7 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
         }, 1200);
       }
       if (data.conversationState?.lastThreeMoves?.includes('CLOSE_GRACEFULLY')) {
+        setCloseReply(reply);
         setTimeout(() => setConversationComplete(true), 4000);
       }
     } catch {
@@ -321,8 +323,8 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
             <button className="completion-close" onClick={handleFinish} aria-label="Close">✕</button>
             <img src="/PUPIL_CELEBRATING.png" alt="Pupil celebrating" className="completion-avatar" />
             <div className="completion-text">
-              <h2 className="completion-title">Great job!</h2>
-              <p className="completion-subtitle">I really learned something today!</p>
+              <h2 className="completion-title">Thanks for teaching me!</h2>
+              <p className="completion-subtitle">{closeReply || 'That was a lot to take in — thanks for walking me through it.'}</p>
             </div>
             <button className="landing-start-btn completion-btn" onClick={handleFinish}>Finish</button>
             <button className="completion-teacher-btn" onClick={sendToTeacher} disabled={reportLoading}>

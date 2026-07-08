@@ -102,7 +102,11 @@ export function selectMove(state, studentMessage = '') {
   }
 
   // ── Student stuck ─────────────────────────────────────────────────────────────
-  if (/\b(i'?m not sure|i don'?t know|i can'?t (?:explain|describe|say)|idk|don'?t know how to|don'?t know where to)\b|^(not sure|no idea|dunno|not really|it'?s (?:difficult|hard) to (?:explain|describe|say)|hard to (?:explain|describe|say)|i'?m not sure)/.test(msg)) {
+  // Only fire when the student is genuinely unable to proceed — not when "I don't
+  // know" is hedging language before a real idea ("I don't know if...", "maybe...").
+  const stuckPhrase = /\b(i'?m not sure|i don'?t know|i can'?t (?:explain|describe|say)|idk|don'?t know how to|don'?t know where to)\b|^(not sure|no idea|dunno|not really|it'?s (?:difficult|hard) to (?:explain|describe|say)|hard to (?:explain|describe|say)|i'?m not sure)/.test(msg);
+  const isHedging = /\bi don'?t know if\b|\bi'?m not sure (?:if|whether)\b|\b(but |maybe |perhaps |i think |because |it could |it might |probably |possibly |although |though )\b/.test(msg);
+  if (stuckPhrase && !isHedging) {
     const stuckPool = testIdeaEligible ? ['TEST_THE_IDEA', 'MAKE_PLAUSIBLE_MISTAKE'] : ['MAKE_PLAUSIBLE_MISTAKE'];
     return pickFrom(stuckPool, lastThreeMoves);
   }

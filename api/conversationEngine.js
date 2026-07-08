@@ -42,6 +42,7 @@ export function initialConversationState() {
     testIdeaCount:        0,
     avatarQueue:          [],
     lastPupilReply:       null,
+    recentPupilReplies:   [],
   };
 }
 
@@ -85,14 +86,24 @@ export function selectMove(state, studentMessage = '') {
   }
 
   // Normal close: depth signals confirm sufficient understanding.
+  // understandingLevel >= 2 reflects a real explanation landing — the LLM
+  // rarely reaches 3 in a single-concept conversation, so 3 was too high.
   if (hasExample && hasExplanation
-      && (understandingLevel ?? 1) >= 3
+      && (understandingLevel ?? 1) >= 2
       && studentClaims.length >= 4) {
     return doClose();
   }
 
   const msg = studentMessage.trim().toLowerCase();
   const lastMove = lastThreeMoves[lastThreeMoves.length - 1];
+
+  // ── Student-done signal ───────────────────────────────────────────────────────
+  // "I think that's basically it", "pretty much it", "you've got it" etc. are
+  // explicit completion signals the agreement regex (single-word) doesn't catch.
+  const DONE_SIGNAL = /\b(basically it|pretty much it|mostly right|essentially right|that'?s all|you'?ve got it|that covers it|that'?s everything|that'?s (?:the |all the )?(?:main|key|important) (?:idea|point|part))\b/i;
+  if (DONE_SIGNAL.test(studentMessage) && studentClaims.length >= 3) {
+    return doClose();
+  }
 
   // ── After MAKE_PLAUSIBLE_MISTAKE → always REFLECT ────────────────────────────
   // Must be before stuck/agreement checks — the student's reply to a mistake
@@ -187,7 +198,10 @@ export function buildMeaningModel(state, output) {
   if (output.fragileUnderstanding !== undefined) next.fragileUnderstanding = output.fragileUnderstanding;
   if (output.currentAssumption !== undefined)  next.currentAssumption = output.currentAssumption;
   if (output.lastOpener !== undefined)         next.lastOpener = output.lastOpener;
-  if (output.lastPupilReply !== undefined)     next.lastPupilReply = output.lastPupilReply;
+  if (output.lastPupilReply !== undefined) {
+    next.lastPupilReply = output.lastPupilReply;
+    next.recentPupilReplies = [...(state.recentPupilReplies || []), output.lastPupilReply].slice(-5);
+  }
   if (output.avatarQueue !== undefined)        next.avatarQueue = output.avatarQueue;
 
   if (output.newStudentClaim && !next.studentClaims.includes(output.newStudentClaim)) {
@@ -527,7 +541,14 @@ function checkAbsoluteLimits(reply, context = {}) {
     if (qCount > 1) return { ok: false, reason: 'more than one question' };
   }
 
-  if (context.lastPupilReply) {
+  if (context.recentPupilReplies?.length > 0) {
+    const normReply = normalize(reply).slice(0, 60);
+    for (const prev of context.recentPupilReplies) {
+      if (normalize(prev).slice(0, 60) === normReply) {
+        return { ok: false, reason: 'near-repeat of a recent Pupil reply (first 60 chars match)' };
+      }
+    }
+  } else if (context.lastPupilReply) {
     if (normalize(reply) === normalize(context.lastPupilReply)) {
       return { ok: false, reason: 'exact repeat of previous reply' };
     }
@@ -635,6 +656,7 @@ export async function runConversationGovernor({ message, history = [], conversat
       const candidate = (parsed.reply || '').trim();
       const check = checkAbsoluteLimits(candidate, {
         lastPupilReply: conversationState.lastPupilReply || null,
+        recentPupilReplies: conversationState.recentPupilReplies || [],
         move,
       });
 
@@ -725,7 +747,7 @@ export async function runConversationGovernor({ message, history = [], conversat
       const fuParsed = JSON.parse(fu.choices[0].message.content);
       const fuCandidate = (fuParsed.reply || '').trim() || null;
       if (fuCandidate) {
-        const fuCheck = checkAbsoluteLimits(fuCandidate, { move: followUpMove });
+        const fuCheck = checkAbsoluteLimits(fuCandidate, { move: followUpMove, recentPupilReplies: updatedState.recentPupilReplies || [] });
         if (fuCheck.ok) {
           followUpReply = fuCandidate;
         } else {

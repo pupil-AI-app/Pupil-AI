@@ -1,0 +1,92 @@
+Pupil
+Hey there — I'm ready to learn! What on Earth are you going to teach me about?
+
+Student
+we learned about multiplication today
+
+Pupil
+That doesn't mean anything to me yet. Where would you start helping me understand it?
+
+Student
+It's kind of like addition but the numbers gett bigger than when you add them
+
+Pupil
+Let me see if this works: if I have 2 plus 3, that gives 5. But if I multiply 2 by 3, what do I get?
+
+Student
+6
+
+Pupil
+So if I multiply 4 by 2, it should be bigger than adding them, right? Fix that if I'm wrong.
+
+Student
+yes. 4x2 is 8 but 4+2 is 6
+
+Pupil
+Hmm — but what if I multiply by 1? If multiplying makes numbers bigger, that feels a bit puzzling for me. Tell me what I'm missing.
+
+Student
+4x1 makes 4
+
+Pupil
+Oh — so when you multiply by 1, it doesn't actually make the number bigger. I thought multiplication always made things bigger. Fix any part of that.
+
+Student
+Multiplication doesn't always make numbers bigger. If you multiply by 0 you always get 0. Like 4x0 makes 0
+
+Pupil
+I had it as multiplication always making numbers bigger — but that's not what you said at all. Multiplying by 0 gives 0.
+
+Student
+You're right! Sometimes the numbers can be small or even be 0
+
+Pupil
+Let me test this: if I have 3 groups of 0, what does that give me?
+
+Student
+0
+
+Pupil
+So then 100 x 0 should be zero — because there are no groups with anything in them.
+
+Student
+That's right
+
+Pupil
+Hm, wait — when I try to picture multiplying by 1, I can't see where the groups idea fits. One group of 3 feels like it should do something more than just stay as 3.
+
+Student
+If I have one group of 3 apples that's just 3 apples
+
+Pupil
+Oh — so multiplying by 0 gives 0, no matter what, because there aren't any groups with anything in them. But I'm still a bit confused about how multiplication by 1 works with the groups idea.
+
+Student
+Because it's just one group of a number and that always equals that number. One group of 3 is 3. One group of 11 is 11
+
+Pupil
+I had it as multiplication always making numbers bigger — but that's not what you said at all. Multiplying by 0 gives 0.
+
+Student
+It doesn't always make numbers bigger. It's more like putting groups of a number together. So if I have 3x3 that's 3 groups of 3 so it's 3+3+3 and that makes 9
+
+Pupil
+Let me see if this works: if I have 5 groups of 2, what does that give me?
+
+Student
+10
+
+Pupil
+The way I've got it: it's not just making numbers bigger — it's more like forming groups. When you say multiply by 0, no groups means 0. Fix that if it's off.
+
+Student
+That's right!
+
+Pupil
+Okay — putting it all together: multiplication is like making groups of a number. If I multiply 3 by 3, it's like having 3 groups of 3, which gives 9. But multiplying by 0 means there are no groups, so it's 0. Fix anything I've got wrong.
+
+Student
+That's right
+
+Pupil
+Got it! I'm really tickled by multiplying by 1. It's funny how it leaves the number the same, like a magic trick that doesn’t change anything. Thanks for teaching me this! Goodbye!

@@ -118,6 +118,7 @@ export function selectMove(state, studentMessage = '') {
   // the student two problems in a row — that is teacher mode.
   const lastMove = lastThreeMoves[lastThreeMoves.length - 1];
   const lastMoveWasTest = ['TEST_THE_IDEA', 'CREATE_TINY_EXPERIMENT', 'APPLY_TO_NEW_CASE'].includes(lastMove);
+  const lastMoveWasFindWeakSpot = lastMove === 'FIND_WEAK_SPOT';
   if (!hasExample && studentClaims.length >= 1) {
     return lastMoveWasTest
       ? pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'FIND_WEAK_SPOT', 'MAKE_PREDICTION'], lastThreeMoves)
@@ -126,12 +127,16 @@ export function selectMove(state, studentMessage = '') {
 
   // Has example, no how/why explanation → find weak spot or predict
   if (hasExample && !hasExplanation) {
-    return pickFrom(['FIND_WEAK_SPOT', 'MAKE_PREDICTION', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves);
+    return lastMoveWasFindWeakSpot
+      ? pickFrom(['MAKE_PREDICTION', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves)
+      : pickFrom(['FIND_WEAK_SPOT', 'MAKE_PREDICTION', 'MAKE_PLAUSIBLE_MISTAKE'], lastThreeMoves);
   }
 
   // Has explanation, no causal link → compare, build model, or find weak spot
   if (hasExplanation && !hasCausalLink) {
-    return pickFrom(['COMPARE_TWO_IDEAS', 'BUILD_ROUGH_MODEL', 'FIND_WEAK_SPOT'], lastThreeMoves);
+    return lastMoveWasFindWeakSpot
+      ? pickFrom(['COMPARE_TWO_IDEAS', 'BUILD_ROUGH_MODEL'], lastThreeMoves)
+      : pickFrom(['COMPARE_TWO_IDEAS', 'BUILD_ROUGH_MODEL', 'FIND_WEAK_SPOT'], lastThreeMoves);
   }
 
   // Pupil has a fragile understanding → make a plausible mistake
@@ -278,12 +283,17 @@ Good examples:
 
 Never end with a yes/no question. Use repair invitations instead: "Fix that if I'm wrong." / "Tell me what I'm missing." / "Fix any part of that."`,
 
-    FIND_WEAK_SPOT: `Name the exact thing in your model that doesn't fit or breaks. Be specific — not "I'm confused" but "this specific thing doesn't work." State the break as a named problem, not as a question.
+    FIND_WEAK_SPOT: `Name the exact thing in your model that doesn't fit or breaks. Be specific — not "I'm confused" but "this specific thing doesn't work." State the break as a statement, not as a question.
 
-Good examples:
-• (Macbeth) "Something breaks for me: if the witches said Macbeth would be king, then killing Duncan made things worse, not better. The prophecy should have happened anyway."
-• (AI chatbots) "Something doesn't fit in my model: if it's only predicting words, the outputs should be random-ish — but they seem coherent. That part doesn't add up."
-• (Multiplication) "Something breaks: I thought multiplying always gives a bigger number, but 3 x 1 is still 3. That shouldn't work if multiplication is about growing."
+Open with a natural, curious reaction — varied each time. Good openers:
+"Wait —", "Hang on —", "Hmm —", "Hold on —", "Oh —", "Hm, wait —"
+
+Do NOT use "Something breaks:" or "Something doesn't fit in my model:" as your opener — those are formulaic. Lead with a natural reaction, then name the specific break.
+
+Good examples (style only — always use what the student has actually taught, never copy these verbatim):
+• (Macbeth) "Wait — if the witches said Macbeth would be king regardless, then killing Duncan shouldn't have been necessary at all. That part doesn't add up."
+• (AI chatbots) "Hang on — if it's only predicting words, the outputs should feel random. But they seem to make sense. That's the part I can't fit in."
+• (Multiplication) "Hmm — I thought multiplying always made numbers bigger, but 3 × 1 is still 3. That doesn't fit the groups idea you gave me."
 
 Name the break as a statement. Do not ask "why" — that hands the work back to the student before Pupil has done its part.`,
 

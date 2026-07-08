@@ -150,9 +150,13 @@ export function selectMove(state, studentMessage = '') {
   }
 
   // Model complete but close conditions not yet met.
-  // Consequence questions (MAKE_PREDICTION) are the primary mid-to-late move —
-  // shift from "did I understand?" to "if this is true, what else must be true?"
-  return pickFrom(['MAKE_PREDICTION', 'MAKE_PLAUSIBLE_MISTAKE', 'COMPARE_TWO_IDEAS'], lastThreeMoves);
+  // Once Pupil has genuine understanding (level >= 2), shift to consequence questions:
+  // "if this is true, what else must be true?" rather than comprehension-checking.
+  // Below that threshold keep the comprehension-building pool.
+  if ((understandingLevel ?? 1) >= 2) {
+    return pickFrom(['MAKE_PREDICTION', 'MAKE_PLAUSIBLE_MISTAKE', 'COMPARE_TWO_IDEAS'], lastThreeMoves);
+  }
+  return pickFrom(['MAKE_PLAUSIBLE_MISTAKE', 'COMPARE_TWO_IDEAS', 'BUILD_ROUGH_MODEL'], lastThreeMoves);
 }
 
 // ─── Layer 0: State updater ───────────────────────────────────────────────────

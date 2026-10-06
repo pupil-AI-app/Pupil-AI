@@ -300,7 +300,13 @@ function Chat({ grade, subject, topic, onFinish, onTeacher }) {
           setMessages(prev => [...prev, { role: 'pupil', text: data.followUpReply }]);
         }, 1200);
       }
-      if (data.conversationState?.lastThreeMoves?.includes('CLOSE_GRACEFULLY')) {
+      const endedByMove = data.conversationState?.lastThreeMoves?.some(move =>
+  move === 'CLOSE_GRACEFULLY' || move === 'SUMMARIZE_AND_CLOSE'
+);
+
+const conversationIsClosed = data.conversationState?.closed === true;
+
+if (endedByMove || conversationIsClosed) {
         setCloseReply(reply);
         setConversationEnded(true);
         setTimeout(() => setConversationComplete(true), 6000);

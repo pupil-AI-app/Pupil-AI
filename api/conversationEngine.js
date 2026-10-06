@@ -283,6 +283,24 @@ function logFailure(stage, err) {
     code: err?.code || null, type: err?.name || 'Error', validation: local }));
 }
 
+function fallbackReply(state, analysis, move, message) {
+  // Handwritten recovery adds no subject knowledge and never pretends a summary
+  // was delivered. It is used only for rejected wording, not provider outages.
+  if (move === 'CLOSE_GRACEFULLY') return "I'll leave it there. Thank you for sharing those pieces with me.";
+  if (move === 'AWAIT_FIRST_IDEA' || state.understandingLevel <= 1) {
+    if (/\bpoem\b/i.test(message)) return "I haven't heard it. Which words from the poem stayed with you?";
+    return "I don't have a picture of it yet. What's one piece you can share?";
+  }
+  if (analysis.correction) return "My earlier picture needs changing. Which piece should I change first?";
+  const quote = analysis.newStudentClaims.at(-1)?.evidence;
+  if (quote) {
+    const words = quote.trim().split(/\s+/);
+    const fragment = words.slice(0, 5).join(' ') + (words.length > 5 ? '…' : '');
+    return `I'm holding onto “${fragment}”. What should I connect that to?`;
+  }
+  return "My picture still has a gap. What's one piece I should look at again?";
+}
+
 async function analyze(client, state, history, message, subject) {
   let feedback = '';
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -315,10 +333,12 @@ export async function runConversationGovernor({ message, history = [], conversat
 
   const analysis = await analyze(client, previous, messages, message, subject);
   const state = buildMeaningModel(previous, analysis);
-  const move = selectMove(state, analysis);
+  let move = selectMove(state, analysis);
   let reply = '';
   let feedback = '';
   let rejectedCandidate = '';
+  let wordingRejected = false;
+  let providerFailure = false;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const result = await client.chat.completions.create({
@@ -331,20 +351,36 @@ export async function runConversationGovernor({ message, history = [], conversat
       });
       const candidate = JSON.parse(result.choices[0].message.content).reply;
       let issue = checkReply(candidate, move, grade, state);
+      let rejectionSource = 'style-or-format';
       if (!issue) {
+        rejectionSource = 'grounding-review';
         const review = await reviewReply(client, candidate, move, messages, message);
         if (!review.ok) issue = review.reason || 'Use only student-taught material and show a specific gap.';
       }
       if (!issue) { reply = candidate.trim(); break; }
+      wordingRejected = true;
       rejectedCandidate = typeof candidate === 'string' ? candidate : '';
-      console.warn('[pupil] voice candidate rejected; retrying');
+      // Fixed categories only; do not leak generated content into logs.
+      console.warn('[pupil] voice rejected:', rejectionSource);
       feedback = `\nRevise your previous attempt: ${issue}`;
     } catch (err) {
       logFailure('voice-or-review', err);
+      if (err instanceof SyntaxError || err?.message === 'Invalid reply review') {
+        wordingRejected = true;
+      } else {
+        providerFailure = true;
+      }
       feedback = '\nReturn valid JSON containing a short, nonempty reply.';
     }
   }
-  if (!reply) throw new Error('Pupil response failed validation');
+  if (!reply) {
+    if (!wordingRejected || providerFailure) throw new Error('Pupil voice or review API failed; see [pupil] logs');
+    reply = fallbackReply(state, analysis, move, message);
+    console.warn('[pupil] using grounded wording fallback');
+    // Recovery text is not an actual summary or example test.
+    if (move !== 'CLOSE_GRACEFULLY' && move !== 'AWAIT_FIRST_IDEA') move = 'FIND_WEAK_SPOT';
+    state.pendingSummary = false;
+  }
 
   state.lastThreeMoves = [...state.lastThreeMoves, move].slice(-3);
   state.testIdeaCount += move === 'TEST_THE_IDEA' ? 1 : 0;
